@@ -6,7 +6,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -42,5 +44,22 @@ public class AppointmentController {
         @RequestBody AppointmentRequestDTO dto) {
         AppointmentResponseDTO response = appointmentService.createManualAppointment(currentUser.getId(), dto);
         return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/today-queue")
+    public ResponseEntity<List<AppointmentResponseDTO>> getTodayQueue(@AuthenticationPrincipal UserPrincipal currentUser) {
+        return ResponseEntity.ok(appointmentService.getTodayQueue(currentUser.getId()));
+    }
+
+    @PutMapping("/{id}/start")
+    public ResponseEntity<AppointmentResponseDTO> startAppointment(@PathVariable Long id) {
+        // Hna t-qder t-zid logic l-start f l-service ila bghiti (Status -> IN_PROGRESS)
+        return ResponseEntity.ok(appointmentService.startAppointment(id));
+    }
+
+    
+    @PutMapping("/{id}/done")
+    public ResponseEntity<AppointmentResponseDTO> completeAppointment(@PathVariable Long id) {
+        return ResponseEntity.ok(appointmentService.completeAppointment(id));
     }
 }

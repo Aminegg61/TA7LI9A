@@ -7,6 +7,8 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -42,4 +44,7 @@ public class User {
     @JsonIgnore // Darori bach ma-ndirouch Infinite Loop mlli n-rj3o l-user f JSON
     private List<ServiceEntity> services;
 
+    //7alla dyal lma7all
+    @Enumerated(EnumType.STRING)
+    private BarberStatus currentStatus = BarberStatus.OFFLINE;
 }

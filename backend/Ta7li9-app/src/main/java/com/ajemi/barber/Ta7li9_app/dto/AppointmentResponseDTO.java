@@ -14,4 +14,6 @@ public class AppointmentResponseDTO {
     private LocalDateTime startTime;
     private LocalDateTime endTime;
     private String status;
+    // T-qder t-zid duration total bach t-shhel l-7sab f Angular
+    private int totalDuration;
 }

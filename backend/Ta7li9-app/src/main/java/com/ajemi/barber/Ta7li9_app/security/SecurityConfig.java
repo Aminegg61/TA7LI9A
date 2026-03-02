@@ -26,6 +26,11 @@ public class SecurityConfig {
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)) // Ma-ghadi-ch n-khbiw session f l-server
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/api/auth/**").permitAll() // Register w Login m-7loulin l-kolchi
+                // ⚡ 1. 7el l-khit d l-WebSocket (Handshake)
+                .requestMatchers("/ws-ta7li9a/**").permitAll() 
+                
+                // ⚡ 2. 7el l-endpoint d l-status bach klyan i-choufou bla login
+                .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/barber/status/**").permitAll()
                 .anyRequest().authenticated() // Ay 7aja khora m-7miya
             );
 
