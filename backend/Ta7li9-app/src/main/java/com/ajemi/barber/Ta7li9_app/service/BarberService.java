@@ -16,10 +16,11 @@ public class BarberService {
     @Autowired private SimpMessagingTemplate messagingTemplate;
 
     @Transactional
-    public void toggleStatus(Long coiffeurId, BarberStatus newStatus) {
+    public void toggleStatus(Long coiffeurId, String newStatus) {
+        BarberStatus status = fromString(newStatus);
         // 1. Update f l-Base de données
         User coiffeur = userRepository.findById(coiffeurId).get();
-        coiffeur.setCurrentStatus(newStatus);
+        coiffeur.setCurrentStatus(status);
         userRepository.save(coiffeur);
 
         // 2. Sift l-išara (The Signal)
@@ -27,6 +28,10 @@ public class BarberService {
         String topic = "/topic/status/" + coiffeurId;
         
         // Sift ghir s-smiya d l-status jdid
-        messagingTemplate.convertAndSend(topic, newStatus.toString());
+        messagingTemplate.convertAndSend(topic, newStatus.toUpperCase());
+    }
+
+    private  static BarberStatus fromString(String value) {
+        return BarberStatus.valueOf(value.toUpperCase());
     }
 }
