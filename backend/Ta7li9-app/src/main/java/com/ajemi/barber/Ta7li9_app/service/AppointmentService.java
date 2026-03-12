@@ -1,5 +1,6 @@
 package com.ajemi.barber.Ta7li9_app.service;
 
+import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -118,6 +119,13 @@ public class AppointmentService {
         dto.setStartTime(entity.getStartTime());
         dto.setEndTime(entity.getEndTime());
         dto.setStatus(entity.getStatus().toString());
+            // Hna t7seb total duration b minutes
+        if (entity.getStartTime() != null && entity.getEndTime() != null) {
+            Duration duration = Duration.between(entity.getStartTime(), entity.getEndTime());
+            dto.setTotalDuration((int) duration.toMinutes()); // 7ssab minutes
+        } else {
+            dto.setTotalDuration(0); // ila ma kaynach dates
+        }
         
         return dto;
     }

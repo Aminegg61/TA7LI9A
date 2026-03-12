@@ -9,7 +9,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.ajemi.barber.Ta7li9_app.entity.BarberStatus;
 import com.ajemi.barber.Ta7li9_app.security.UserPrincipal;
 import com.ajemi.barber.Ta7li9_app.service.BarberService;
 
