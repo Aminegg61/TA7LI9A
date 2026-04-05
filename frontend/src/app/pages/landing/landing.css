@@ -1,4 +1,12 @@
-/* Image on the right */
+/* Prevent scroll */
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  overflow-y: hidden;
+}
+
+/* Image */
 .landing-img-full {
   height: 100%;
   width: auto;
@@ -12,16 +20,10 @@
   color: #222;
 }
 
-.landing-subtitle {
-  font-size: 1.5rem;
-  color: #555;
-  margin-bottom: 2rem;
-}
-
 /* Role boxes */
 .role-box {
   background-color: #fff;
-  border-left: 5px solid #0d6efd; /* Blue accent for clients by default */
+  border-left: 5px solid #0d6efd;
   transition: all 0.3s;
 }
 
@@ -31,21 +33,40 @@
 }
 
 .client-box {
-  border-left-color: #0d6efd; /* blue */
+  border-left-color: #0d6efd;
 }
 
 .pro-box {
-  border-left-color: #28a745; /* green */
+  border-left-color: #28a745;
 }
 
-/* Role titles */
 .role-title {
   font-size: 1.5rem;
   font-weight: 600;
-  color: #222;
 }
 
 .role-desc {
   font-size: 1rem;
   color: #555;
+}
+
+/* 🔥 Mobile تحسين */
+@media (max-width: 768px) {
+  .landing-title {
+    font-size: 2rem;
+    text-align: center;
+    width: 100%;
+  }
+
+  .role-box {
+    width: 100%;
+  }
+
+  .container-fluid {
+    padding: 20px;
+  }
+
+  .row {
+    height: auto; /* باش مايكونش مشكل ديال vh */
+  }
 }
