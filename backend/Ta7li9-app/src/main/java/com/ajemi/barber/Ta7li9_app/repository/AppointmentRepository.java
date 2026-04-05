@@ -45,10 +45,10 @@ public interface AppointmentRepository extends JpaRepository<AppointmentEntity, 
         java.time.LocalDateTime start, 
         java.time.LocalDateTime end
     );
-    List<AppointmentEntity> findByCoiffeurIdAndStatusInAndCreatedAtBeforeOrderByCreatedAtAsc(
-        Long barberId, 
-        List<AppointmentStatus> statuses, 
-        LocalDateTime createdAt
-    );
+    // List<AppointmentEntity> findByCoiffeurIdAndStatusInAndCreatedAtBeforeOrderByCreatedAtAsc(
+    //     Long barberId, 
+    //     List<AppointmentStatus> statuses, 
+    //     LocalDateTime createdAt
+    // );
 
 }
