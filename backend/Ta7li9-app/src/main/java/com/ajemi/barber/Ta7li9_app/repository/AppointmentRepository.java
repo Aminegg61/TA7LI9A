@@ -1,5 +1,6 @@
 package com.ajemi.barber.Ta7li9_app.repository;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -43,6 +44,11 @@ public interface AppointmentRepository extends JpaRepository<AppointmentEntity, 
         List<AppointmentStatus> statuses, 
         java.time.LocalDateTime start, 
         java.time.LocalDateTime end
+    );
+    List<AppointmentEntity> findByCoiffeurIdAndStatusInAndCreatedAtBeforeOrderByCreatedAtAsc(
+        Long barberId, 
+        List<AppointmentStatus> statuses, 
+        LocalDateTime createdAt
     );
 
 }
