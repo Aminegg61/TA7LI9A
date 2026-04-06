@@ -1,37 +1,53 @@
-/* Prevent scroll */
+/* ===== RESET ===== */
 html, body {
   margin: 0;
   padding: 0;
   height: 100%;
-  overflow-y: hidden;
+  overflow-y: hidden; /* no vertical scroll */
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background-color: #f8f9fa;
 }
 
-/* Image */
+/* ===== CONTAINER ===== */
+.container-fluid {
+  height: 100vh;
+}
+
+/* ===== IMAGE RIGHT ===== */
 .landing-img-full {
   height: 100%;
   width: auto;
   max-width: 100%;
 }
 
-/* Titles */
+/* ===== TITLE ===== */
 .landing-title {
   font-size: 3rem;
   font-weight: 700;
   color: #222;
 }
 
-/* Role boxes */
+/* ===== ROLE BOXES ===== */
 .role-box {
   background-color: #fff;
   border-left: 5px solid #0d6efd;
-  transition: all 0.3s;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  width: 100%;
 }
 
+/* Hover effect */
 .role-box:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+  transform: translateY(-4px) scale(1.01);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
 }
 
+/* Click effect */
+.role-box:active {
+  transform: scale(0.98);
+}
+
+/* Colors */
 .client-box {
   border-left-color: #0d6efd;
 }
@@ -40,9 +56,11 @@ html, body {
   border-left-color: #28a745;
 }
 
+/* ===== TEXT ===== */
 .role-title {
   font-size: 1.5rem;
   font-weight: 600;
+  color: #222;
 }
 
 .role-desc {
@@ -50,16 +68,35 @@ html, body {
   color: #555;
 }
 
-/* 🔥 Mobile تحسين */
+/* ===== OPTIONAL ARROW ===== */
+.arrow {
+  font-size: 1.5rem;
+  transition: transform 0.3s;
+}
+
+.role-box:hover .arrow {
+  transform: translateX(6px);
+}
+
+/* ===== MOBILE ===== */
 @media (max-width: 768px) {
+
+  html, body {
+    overflow-y: auto; /* allow scroll on small screens */
+  }
+
   .landing-title {
     font-size: 2rem;
     text-align: center;
     width: 100%;
   }
 
-  .role-box {
-    width: 100%;
+  .role-title {
+    font-size: 1.2rem;
+  }
+
+  .role-desc {
+    font-size: 0.9rem;
   }
 
   .container-fluid {
@@ -67,6 +104,10 @@ html, body {
   }
 
   .row {
-    height: auto; /* باش مايكونش مشكل ديال vh */
+    height: auto;
+  }
+
+  .role-box {
+    width: 100%;
   }
 }

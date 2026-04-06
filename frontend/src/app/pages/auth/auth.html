@@ -1,0 +1,61 @@
+<div class="auth-page container-fluid vh-100 p-0">
+  <div class="row h-100 m-0">
+
+    <!-- Right image -->
+    <div class="col-md-6 d-none d-md-flex p-0 order-md-2">
+      <img src="assets/landing-image1.jpeg" alt="Salon" class="auth-right-img">
+    </div>
+
+    <!-- Left auth form -->
+    <div class="col-12 col-md-6 d-flex justify-content-center align-items-center p-4 order-md-1">
+
+        <div class="auth-card w-100 w-md-75">
+          
+          <h2 class="auth-title mb-3">Bienvenue</h2>
+          
+          <!-- Switch login/register -->
+          <div class="switch-buttons d-flex gap-2 mb-4">
+            <button class="btn w-50 login-btn" [class.active]="mode==='login'" (click)="mode='login'">Login</button>
+            <button class="btn w-50 register-btn" [class.active]="mode==='register'"
+            (click)="mode='register'">Register</button>
+          </div>
+          
+          <!-- Login Form -->
+          <form *ngIf="mode==='login'" class="auth-form">
+            <input type="email" placeholder="Email" />
+            <input type="password" placeholder="Password" />
+            <button type="submit" class="btn submit-btn">Se connecter</button>
+          </form>
+          
+          <!-- Register Form -->
+          <form *ngIf="mode==='register'" class="auth-form" (ngSubmit)="onRegister()">
+            
+            <input type="text" name="firstName" [(ngModel)]="registerData.firstName" placeholder="First Name" />
+            
+            <input type="text" name="lastName" [(ngModel)]="registerData.lastName" placeholder="Last Name" />
+            
+            <input type="email" name="email" [(ngModel)]="registerData.email" placeholder="Email" />
+            
+            <input type="text" name="phoneNumber" [(ngModel)]="registerData.phoneNumber" placeholder="Phone Number" />
+            
+            <input type="password" name="password" [(ngModel)]="registerData.password" placeholder="Password" />
+            
+            <input type="password" name="confirmPassword" [(ngModel)]="registerData.confirmPassword"
+            placeholder="Confirm Password" />
+            
+            <button type="submit" class="btn submit-btn">S'inscrire</button>
+          </form>
+          
+          <!-- Switch role section -->
+          <div class="switch-role">
+            <span class="switch-role-text-white">Souhaitez-vous prendre rendez-vous ?</span>
+            <button class="btn switch-role-btn" (click)="toggleRole()">
+              Passer à {{ role === 'CLIENT' ? 'Coiffeur' : 'Client' }}
+            </button>
+          </div>
+
+      </div>
+    </div>
+
+  </div>
+</div>

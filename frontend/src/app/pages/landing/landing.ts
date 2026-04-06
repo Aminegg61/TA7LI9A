@@ -1,4 +1,5 @@
 import { Component } from '@angular/core';
+import { Router } from '@angular/router';
 
 @Component({
   selector: 'app-landing',
@@ -6,4 +7,9 @@ import { Component } from '@angular/core';
   templateUrl: './landing.html',
   styleUrl: './landing.css',
 })
-export class Landing {}
+export class Landing {
+  constructor(private router: Router) { }
+  goToAuth(role: string) {
+    this.router.navigate(['/auth'], { queryParams: { role } });
+  }
+}

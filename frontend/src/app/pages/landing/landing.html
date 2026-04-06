@@ -1,27 +1,29 @@
 <div class="container-fluid vh-100 d-flex align-items-center px-4">
-  <div class="row w-100">
-    
-    <!-- Left content -->
-    <div class="col-12 col-md-6 d-flex flex-column justify-content-center align-items-start">
-      <h1 class="landing-title mb-4">S'inscrire / Se connecter</h1>
+    <div class="row w-100">
 
-      <div class="d-flex flex-column gap-4 w-100 w-md-75">
-        <div class="role-box client-box p-4 rounded shadow-sm">
-          <h2 class="role-title mb-2">Ta7li9a pour les clients</h2>
-          <p class="role-desc mb-0">Prenez rendez-vous dans un salon</p>
+        <!-- Left content -->
+        <div class="col-12 col-md-6 d-flex flex-column justify-content-center align-items-start">
+            <h1 class="landing-title mb-4">S'inscrire / Se connecter</h1>
+
+            <div class="d-flex flex-column gap-4 w-100 w-md-75">
+
+                <div class="role-box client-box p-4 rounded shadow-sm" (click)="goToAuth('CLIENT')">
+                    <h2 class="role-title mb-2">Ta7li9a pour les clients</h2>
+                    <p class="role-desc mb-0">Prenez rendez-vous dans un salon</p>
+                </div>
+
+                <div class="role-box pro-box p-4 rounded shadow-sm" (click)="goToAuth('COIFFEUR')">
+                    <h2 class="role-title mb-2">Ta7li9a pour les professionnels</h2>
+                    <p class="role-desc mb-0">Gérez et développez votre entreprise</p>
+                </div>
+
+            </div>
         </div>
 
-        <div class="role-box pro-box p-4 rounded shadow-sm">
-          <h2 class="role-title mb-2">Ta7li9a pour les professionnels</h2>
-          <p class="role-desc mb-0">Gérez et développez votre entreprise</p>
+        <!-- Right image (hidden on mobile) -->
+        <div class="col-md-6 d-none d-md-flex justify-content-center align-items-center p-0">
+            <img src="assets/landing-image.jpg" alt="Salon" class="landing-img-full">
         </div>
-      </div>
-    </div>
 
-    <!-- Right image (hidden on mobile) -->
-    <div class="col-md-6 d-none d-md-flex justify-content-center align-items-center p-0">
-      <img src="assets/landing-image.jpg" alt="Salon" class="landing-img-full">
     </div>
-
-  </div>
 </div>
