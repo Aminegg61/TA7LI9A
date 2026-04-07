@@ -19,9 +19,9 @@ body, html {
   object-fit: cover;
 }
 
-.order-md-1 {
+/* .order-md-1 {
   background: #000000;
-}
+} */
 
 .auth-card {
   /* background-color: black; */
@@ -174,4 +174,53 @@ body, html {
 .switch-role-btn:hover {
   color: #fff; /* texte ybdel l white f hover */
   text-decoration: underline; /* optional: underline f hover */
+}
+.password-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.password-wrapper input {
+  flex: 1;
+  padding-right: 35px; /* space for icon */
+}
+
+.toggle-password {
+  position: absolute;
+  right: 10px;
+  cursor: pointer;
+  user-select: none;
+}
+
+/* Error message */
+.error {
+  color: #ff6b6b; /* red soft */
+  font-size: 0.85rem;
+  margin-top: -10px;
+  margin-bottom: 10px;
+  padding-left: 5px;
+  font-weight: 500;
+}
+
+/* Input error state */
+.auth-form input.ng-invalid.ng-touched {
+  border: 1px solid #ff6b6b;
+  background-color: #3a1f1f; /* dark red bg */
+}
+
+/* Input valid state */
+.auth-form input.ng-valid.ng-touched {
+  border: 1px solid #4caf50;
+}
+
+/* Focus + error */
+.auth-form input.ng-invalid.ng-touched:focus {
+  outline: none;
+  box-shadow: 0 0 5px rgba(255, 107, 107, 0.6);
+}
+
+/* Smooth transition */
+.auth-form input {
+  transition: all 0.2s ease-in-out;
 }

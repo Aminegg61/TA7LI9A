@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, ChangeDetectorRef } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -7,15 +7,17 @@ import { RequestRegister } from '../../models/request-register.model';
 
 @Component({
   selector: 'app-auth',
-  imports: [CommonModule,FormsModule],
+  imports: [CommonModule, FormsModule],
   templateUrl: './auth.html',
   styleUrl: './auth.css',
 })
 export class Auth {
   role: 'CLIENT' | 'COIFFEUR' = 'CLIENT';
   mode: 'login' | 'register' = 'login';
+  showPassword = false;
+  showConfirmPassword = false;
 
-   registerData: RequestRegister = {
+  registerData: RequestRegister = {
     firstName: "",
     lastName: "",
     email: "",
@@ -24,7 +26,7 @@ export class Auth {
     phoneNumber: "",
     role: "CLIENT"
   }
-  constructor(private route: ActivatedRoute, private authService: AuthService) { }
+  constructor(private route: ActivatedRoute, private authService: AuthService, private cd: ChangeDetectorRef) { }
 
   ngOnInit() {
     this.route.queryParams.subscribe(params => {
@@ -39,10 +41,18 @@ export class Auth {
 
   }
 
-  onRegister() {
+  onRegister(form: any) {
+    if (form.invalid) {
+      alert("Veuillez remplir tous les champs !");
+      return;
+    }
+
+    if (this.registerData.password !== this.registerData.confirmPassword) {
+      alert("Passwords do not match");
+      return;
+    }
     this.registerData.role = this.role;
-    console.log(1111111111111111111111111111111111111111111111111111111111111111);
-    
+
     if (this.registerData.password !== this.registerData.confirmPassword) {
       alert("Passwords do not match");
       return;
@@ -50,7 +60,21 @@ export class Auth {
 
     this.authService.register(this.registerData).subscribe({
       next: (res) => {
-        alert("Compte créé avec succès !");
+        console.log("Compte créé avec succès !");
+        // 1️⃣ reset les champs
+        this.registerData = {
+          firstName: "",
+          lastName: "",
+          email: "",
+          password: "",
+          confirmPassword: "",
+          phoneNumber: "",
+          role: this.role // gard role actuel
+        };
+        
+        this.mode = 'login';
+        this.cd.detectChanges();
+        this.registerData
       },
       error: (err) => {
         console.error(err);
