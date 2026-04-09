@@ -3,7 +3,7 @@ import { ActivatedRoute } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AuthService } from '../../services/auth';
-import { RequestRegister } from '../../models/request-register.model';
+import { RequestLogin, RequestRegister } from '../../models/request-register.model';
 
 @Component({
   selector: 'app-auth',
@@ -26,6 +26,10 @@ export class Auth {
     phoneNumber: "",
     role: "CLIENT"
   }
+  loginData:RequestLogin = {
+    email:"",
+    password:""
+  }
   constructor(private route: ActivatedRoute, private authService: AuthService, private cd: ChangeDetectorRef) { }
 
   ngOnInit() {
@@ -47,10 +51,6 @@ export class Auth {
       return;
     }
 
-    if (this.registerData.password !== this.registerData.confirmPassword) {
-      alert("Passwords do not match");
-      return;
-    }
     this.registerData.role = this.role;
 
     if (this.registerData.password !== this.registerData.confirmPassword) {
@@ -62,23 +62,38 @@ export class Auth {
       next: (res) => {
         console.log("Compte créé avec succès !");
         // 1️⃣ reset les champs
-        this.registerData = {
-          firstName: "",
-          lastName: "",
-          email: "",
-          password: "",
-          confirmPassword: "",
-          phoneNumber: "",
-          role: this.role // gard role actuel
-        };
-        
+        form.resetForm({
+          role: this.role
+        });
         this.mode = 'login';
-        this.cd.detectChanges();
-        this.registerData
       },
       error: (err) => {
         console.error(err);
         alert("Erreur lors de l'inscription !");
+      }
+    });
+  }
+  onLogin() {
+    if (!this.loginData.email || !this.loginData.password) {
+      alert("email and password is required");
+      return;
+    }
+
+    this.authService.login(this.loginData).subscribe({
+      next: (res: any) => {
+        console.log("Login success ✅");
+        
+        // ✅ خزّن token
+        localStorage.setItem("token", res.token);
+        localStorage.setItem("role",res.role)
+        const role = this.authService.getUserRole();
+        console.log(role);
+        
+
+      },
+      error: (err) => {
+        console.error(err);
+        alert("Email ou mot de passe incorrect ❌");
       }
     });
   }

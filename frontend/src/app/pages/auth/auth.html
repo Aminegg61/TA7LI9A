@@ -22,9 +22,20 @@
         </div>
 
         <!-- Login Form -->
-        <form *ngIf="mode==='login'" class="auth-form">
-          <input type="email" placeholder="Email" />
-          <input type="password" placeholder="Password" />
+        <form *ngIf="mode==='login'" class="auth-form" (ngSubmit)="onLogin()">
+          <input type="email" name="email" [(ngModel)]="loginData.email" placeholder="Email" required />
+          <div class="password-wrapper">
+            <input 
+              [type]="showPassword ? 'text' : 'password'" 
+              name="password"
+              [(ngModel)]="loginData.password" 
+              placeholder="Password" 
+              required />
+
+            <span class="toggle-password" (click)="showPassword = !showPassword">
+              {{ showPassword ? '👁️' : '🔒' }}
+            </span>
+          </div>
           <button type="submit" class="btn submit-btn">Se connecter</button>
         </form>
 
@@ -69,11 +80,25 @@
         </form>
 
         <!-- Switch role section -->
-        <div class="switch-role">
-          <span class="switch-role-text-white">Souhaitez-vous prendre rendez-vous ?</span>
-          <button class="btn switch-role-btn" (click)="toggleRole()">
-            Passer à {{ role === 'CLIENT' ? 'Coiffeur' : 'Client' }}
-          </button>
+        <div class="switch-role-container mt-4">
+          <div class="role-card d-flex align-items-center justify-content-between">
+            
+            <div class="role-info" *ngIf="role === 'COIFFEUR'">
+              <p class="role-question mb-0 text-white-50">Vous cherchez à vous faire coiffer ?</p>
+              <h5 class="role-label mb-0 text-white">Prenez rendez-vous en tant que <strong>Client</strong></h5>
+            </div>
+
+            <div class="role-info" *ngIf="role === 'CLIENT'">
+              <p class="role-question mb-0 text-white-50">Vous êtes un barbier professionnel ?</p>
+              <h5 class="role-label mb-0 text-white">Gérez votre salon en tant que <strong>Coiffeur</strong></h5>
+            </div>
+
+            <button type="button" class="btn switch-role-btn-gold" (click)="toggleRole()">
+              <i class="fas" [ngClass]="role === 'CLIENT' ? 'fa-cut' : 'fa-user'"></i> 
+              Passer à {{ role === 'CLIENT' ? 'Coiffeur' : 'Client' }}
+            </button>
+            
+          </div>
         </div>
 
       </div>

@@ -7,3 +7,8 @@ export interface RequestRegister {
   phoneNumber: string;
   role: 'CLIENT' | 'COIFFEUR';
 }
+
+export interface RequestLogin{
+  email:string;
+  password:string;
+}

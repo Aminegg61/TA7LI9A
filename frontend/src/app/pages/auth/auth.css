@@ -8,8 +8,8 @@ body, html {
 }
 
 .auth-page {
-  height: 100vh;
-  overflow: hidden;
+  min-height: 100vh;
+  overflow-y: auto;
 }
 
 /* Image right */
@@ -223,4 +223,20 @@ body, html {
 /* Smooth transition */
 .auth-form input {
   transition: all 0.2s ease-in-out;
+}
+.text-gold {
+  color: #D4AF37;
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+/* زر التحويل فاش كيكون فـ Mode Pro يولي لونه مختلف شوية يلا بغيتي */
+.switch-role-btn-gold {
+  transition: transform 0.2s ease-in-out;
+}
+
+.switch-role-btn-gold:active {
+  transform: scale(0.95);
 }
