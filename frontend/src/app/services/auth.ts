@@ -23,7 +23,7 @@ export class AuthService {
     const token = localStorage.getItem('token');
     if (token) {
       const decoded: any = jwtDecode(token);
-      console.log(decoded.role);
+     
       
       return decoded.role; // هادي هي اللي جاية من Spring Boot
     }

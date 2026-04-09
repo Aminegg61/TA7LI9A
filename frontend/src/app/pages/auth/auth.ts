@@ -1,5 +1,5 @@
 import { Component, ChangeDetectorRef } from '@angular/core';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AuthService } from '../../services/auth';
@@ -26,11 +26,11 @@ export class Auth {
     phoneNumber: "",
     role: "CLIENT"
   }
-  loginData:RequestLogin = {
-    email:"",
-    password:""
+  loginData: RequestLogin = {
+    email: "",
+    password: ""
   }
-  constructor(private route: ActivatedRoute, private authService: AuthService, private cd: ChangeDetectorRef) { }
+  constructor(private route: ActivatedRoute, private authService: AuthService, private cd: ChangeDetectorRef, private router: Router) { }
 
   ngOnInit() {
     this.route.queryParams.subscribe(params => {
@@ -82,13 +82,21 @@ export class Auth {
     this.authService.login(this.loginData).subscribe({
       next: (res: any) => {
         console.log("Login success ✅");
-        
+
         // ✅ خزّن token
         localStorage.setItem("token", res.token);
-        localStorage.setItem("role",res.role)
+        localStorage.setItem("role", res.role)
         const role = this.authService.getUserRole();
         console.log(role);
-        
+        if (res.role === 'ROLE_CLIENT') {
+          this.router.navigate(['/client/dashboard']);
+        }
+        else if (res.role === 'ROLE_COIFFEUR') {
+          this.router.navigate(['/barber/dashboard']);
+        }
+        else {
+          console.log("Role inconnu ❌");
+        }
 
       },
       error: (err) => {
