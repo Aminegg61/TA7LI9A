@@ -2,6 +2,7 @@ import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { jwtDecode } from 'jwt-decode';
+
 @Injectable({
   providedIn: 'root',
 })
@@ -20,17 +21,29 @@ export class AuthService {
   }
 
   getUserRole(): string {
-    const token = localStorage.getItem('token');
+    const token = this.getToken();
     if (token) {
       const decoded: any = jwtDecode(token);
-     
-      
       return decoded.role; // هادي هي اللي جاية من Spring Boot
     }
     return '';
   }
 
+  getUserId(): number {
+    const token = this.getToken();
+    if (token) {
+      const decoded: any = jwtDecode(token);
+      return decoded.id; // added extraction of id
+    }
+    return 0;
+  }
+
+  getToken(): string | null {
+    return localStorage.getItem('token');
+  }
+
   isLoggedIn(): boolean {
-    return !!localStorage.getItem('token');
+    return !!this.getToken();
   }
 }
+

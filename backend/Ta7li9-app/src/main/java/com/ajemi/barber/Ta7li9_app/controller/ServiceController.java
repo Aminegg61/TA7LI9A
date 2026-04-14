@@ -71,4 +71,9 @@ public class ServiceController {
         serviceService.deleteService(id, currentUser.getId());
         return ResponseEntity.ok("Service t-mssa7 b naja7!");
     }
+
+    @GetMapping("/barber/{coiffeurId}")
+    public ResponseEntity<List<ServiceResponseDTO>> getBarberServices(@PathVariable Long coiffeurId) {
+        return ResponseEntity.ok(serviceService.getCoiffeurServices(coiffeurId));
+    }
 }

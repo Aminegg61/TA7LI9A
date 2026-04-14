@@ -31,6 +31,8 @@ public class SecurityConfig {
                 
                 // ⚡ 2. 7el l-endpoint d l-status bach klyan i-choufou bla login
                 .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/barber/status/**").permitAll()
+                // ⚡ 3. 7el l-endpoint d l-services bach l-klyan i-choufou services dyal barber bla wlo
+                .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/services/barber/**").permitAll()
                 .anyRequest().authenticated() // Ay 7aja khora m-7miya
             );
 
