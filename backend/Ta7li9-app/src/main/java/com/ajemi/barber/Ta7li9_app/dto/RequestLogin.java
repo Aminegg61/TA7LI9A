@@ -8,7 +8,7 @@ import lombok.Setter;
 @Getter@Setter
 public class RequestLogin {
     @NotBlank(message = "Email is required")
-    private String email;
+    private String phoneNumber;
 
     @NotBlank(message = "Password is required")
     private String password;

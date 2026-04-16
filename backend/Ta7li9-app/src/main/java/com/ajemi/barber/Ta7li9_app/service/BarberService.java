@@ -34,4 +34,13 @@ public class BarberService {
     private  static BarberStatus fromString(String value) {
         return BarberStatus.valueOf(value.toUpperCase());
     }
+    public String getBarberStatus(Long coiffeurId) {
+        User barber = userRepository.findById(coiffeurId)
+            .orElseThrow(() -> new RuntimeException("Barber ma-lqinahch!"));
+        
+        // Suwwel rassek: wach l-status smitou 'currentStatus' walla 'status' f l-Entity dyalk?
+        // 3la 7sab l-logs li sifti qbel, rak msemih 'current_status'
+        return barber.getCurrentStatus().toString(); 
+    }
+
 }

@@ -6,8 +6,10 @@ import { BarberService } from '../../../services/barber.service';
 import { WebsocketService } from '../../../services/websocket.service';
 import { AppointmentService } from '../../../services/appointment.service';
 import { ServiceCatalogService } from '../../../services/service-catalog.service';
-import { BarberSearchDto, ServiceResponseDTO } from '../../../models/interfaces';
+import { AppointmentRequestDTO, BarberSearchDto, ServiceResponseDTO, User } from '../../../models/interfaces';
 import { Subscription } from 'rxjs';
+import { ChangeDetectorRef } from '@angular/core';
+import { AuthService } from '../../../services/auth';
 
 @Component({
   selector: 'app-client-dashboard',
@@ -28,6 +30,9 @@ import { Subscription } from 'rxjs';
             <p class="text-[10px] text-yellow-500 font-black uppercase tracking-widest">Client Portal</p>
           </div>
         </div>
+        <span class="text-xs font-bold bg-neutral-900 px-3 py-1.5 rounded-full border border-neutral-800">
+          {{ currentUser?.firstName }} {{ currentUser?.lastName }}
+        </span>
         <button (click)="logout()" class="text-xs font-bold text-red-500 hover:text-red-400 uppercase tracking-widest">
           Logout
         </button>
@@ -123,11 +128,17 @@ import { Subscription } from 'rxjs';
                 </div>
               </div>
 
+
               <button *ngIf="barber.currentStatus === 'ACTIVE' && !barber.inQueue"
                       (click)="openServiceSelection(barber.id)"
                       class="w-full bg-yellow-500 text-black font-black uppercase tracking-widest py-4 rounded-xl hover:bg-yellow-400 transition-all active:scale-[0.98]">
                 Send a Demand
               </button>
+
+              <div *ngIf="barber.inQueue"
+                  class="w-full bg-neutral-950 text-neutral-500 text-center font-black uppercase tracking-widest py-4 rounded-xl border border-neutral-800 shadow-inner">
+                Already In Line
+              </div>
               
               <div *ngIf="barber.currentStatus !== 'ACTIVE' || barber.inQueue"
                    class="w-full bg-neutral-950 text-neutral-500 text-center font-black uppercase tracking-widest py-4 rounded-xl border border-neutral-800 shadow-inner">
@@ -211,6 +222,7 @@ import { Subscription } from 'rxjs';
   `
 })
 export class ClientDashboard implements OnInit, OnDestroy {
+  currentUser: User | null = null;
   activeTab: 'favorites' | 'all' = 'favorites';
   
   myBarbers: BarberSearchDto[] = [];
@@ -230,14 +242,17 @@ export class ClientDashboard implements OnInit, OnDestroy {
   private subscriptions: Subscription[] = [];
 
   constructor(
+    private auth: AuthService,  
     private router: Router,
     private barberService: BarberService,
     private ws: WebsocketService,
     private appointmentService: AppointmentService,
-    private catalogService: ServiceCatalogService
+    private catalogService: ServiceCatalogService,
+    private cdr: ChangeDetectorRef,
   ) {}
 
   ngOnInit() {
+    this.currentUser = this.auth.getCurrentUser();
     this.ws.connect();
     this.loadLists();
   }
@@ -272,22 +287,28 @@ export class ClientDashboard implements OnInit, OnDestroy {
     });
   }
 
-  subscribeToBarbers(list: BarberSearchDto[]) {
+subscribeToBarbers(list: BarberSearchDto[]) {
     list.forEach(b => {
       const sub = this.ws.subscribeToBarberStatus(b.id).subscribe(newStatus => {
-        // Update both arrays
+        console.log(`Update Real-time dyal ${b.firstName}: ${newStatus}`);
+        
         const updateInList = (arr: BarberSearchDto[]) => {
           const match = arr.find(x => x.id === b.id);
-          if (match && (newStatus === 'ACTIVE' || newStatus === 'FULL' || newStatus === 'OFFLINE')) {
+          if (match) {
             match.currentStatus = newStatus as any;
           }
         };
+
         updateInList(this.myBarbers);
         updateInList(this.myFavorites);
+
+        // 3. FORCE-I ANGULAR Y-CHOUF L-JDID
+        this.cdr.detectChanges(); 
       });
       this.subscriptions.push(sub);
     });
   }
+
 
   getStatusColor(status: string) {
     if (status === 'ACTIVE') return 'bg-green-500';
@@ -360,14 +381,23 @@ export class ClientDashboard implements OnInit, OnDestroy {
     }
   }
 
-  submitRequest() {
-    if (this.selectedServices.length === 0 || !this.targetBarberId) return;
-    
-    this.appointmentService.createAppointment({
-      serviceIds: this.selectedServices
-    }).subscribe(() => {
+submitRequest() {
+  if (this.selectedServices.length === 0 || !this.targetBarberId) return;
+  
+  const payload: AppointmentRequestDTO = {
+    barberId: this.targetBarberId,
+    serviceIds: this.selectedServices,
+    manualName: '',   // Beddel null b string khawi
+    clientId: undefined // Blast null, ista3mel undefined ila kan optional
+  };
+
+  this.appointmentService.createAppointment(payload).subscribe({
+    next: () => {
+      console.log(payload);
+      
       this.serviceSelectOpen = false;
-      this.loadLists(); // refresh to show "inQueue" or something
-    });
-  }
+      this.loadLists();
+    }
+  });
+}
 }

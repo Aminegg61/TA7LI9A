@@ -45,6 +45,13 @@ public interface AppointmentRepository extends JpaRepository<AppointmentEntity, 
         java.time.LocalDateTime start, 
         java.time.LocalDateTime end
     );
+    
+    boolean existsByClientIdAndStatusIn(Long clientId, List<AppointmentStatus> statuses);
+    List<AppointmentEntity> findByCoiffeurIdAndStatusIn(Long coiffeurId, List<AppointmentStatus> statuses);
+    Optional<AppointmentEntity> findTopByCoiffeurIdAndStatusInOrderByEndTimeDesc(
+        Long coiffeurId, 
+        List<AppointmentStatus> statuses
+    );
     // List<AppointmentEntity> findByCoiffeurIdAndStatusInAndCreatedAtBeforeOrderByCreatedAtAsc(
     //     Long barberId, 
     //     List<AppointmentStatus> statuses, 

@@ -4,11 +4,12 @@ export interface AppointmentResponseDTO {
   serviceNames: string[];
   startTime: string;
   endTime: string;
-  status: 'WAITING' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
+  status: 'WAITING' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED' | 'PENDING';
   totalDuration: number;
 }
 
 export interface AppointmentRequestDTO {
+  barberId?: number | null;
   clientId?: number | null;
   manualName?: string;
   serviceIds: number[];

@@ -42,7 +42,8 @@ public class AppointmentController {
     public ResponseEntity<AppointmentResponseDTO> createAppointment(
         @AuthenticationPrincipal UserPrincipal currentUser,
         @RequestBody AppointmentRequestDTO dto) {
-        AppointmentResponseDTO response = appointmentService.createManualAppointment(currentUser.getId(), dto);
+            System.out.println("DTO Received: " + dto.toString());
+        AppointmentResponseDTO response = appointmentService.createAppointment(currentUser, dto);
         return ResponseEntity.ok(response);
     }
 
@@ -61,5 +62,15 @@ public class AppointmentController {
     @PutMapping("/{id}/done")
     public ResponseEntity<AppointmentResponseDTO> completeAppointment(@PathVariable Long id) {
         return ResponseEntity.ok(appointmentService.completeAppointment(id));
+    }
+    @PutMapping("/{id}/accept")
+    public ResponseEntity<AppointmentResponseDTO> accept(@PathVariable Long id) {
+        return ResponseEntity.ok(appointmentService.acceptAppointment(id));
+    }
+
+    @PutMapping("/{id}/reject")
+    public ResponseEntity<Void> reject(@PathVariable Long id) {
+        appointmentService.rejectAppointment(id); // Kat-beddel status l CANCELLED
+        return ResponseEntity.noContent().build();
     }
 }

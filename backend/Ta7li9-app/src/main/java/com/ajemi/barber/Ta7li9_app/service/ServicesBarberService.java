@@ -14,6 +14,8 @@ import com.ajemi.barber.Ta7li9_app.entity.User;
 import com.ajemi.barber.Ta7li9_app.repository.ServiceRepository;
 import com.ajemi.barber.Ta7li9_app.repository.UserRepository;
 
+import jakarta.transaction.Transactional;
+
 @Service
 public class ServicesBarberService {
     
@@ -38,7 +40,7 @@ public class ServicesBarberService {
     }
 
     public List<ServiceResponseDTO> getCoiffeurServices(Long coiffeurId) {
-        return serviceRepository.findByCoiffeurId(coiffeurId)
+        return serviceRepository.findByCoiffeurIdAndDeletedFalse(coiffeurId)
                 .stream()
                 .map(this::mapToResponse)
                 .collect(Collectors.toList());
@@ -61,7 +63,7 @@ public class ServicesBarberService {
         ServiceEntity updated = serviceRepository.save(service);
         return mapToResponse(updated);
     }
-
+    @Transactional
     public void deleteService(Long serviceId, Long coiffeurId) {
         ServiceEntity service = serviceRepository.findById(serviceId)
             .orElseThrow(() -> new RuntimeException("Service ma-lqinahch!"));
@@ -69,7 +71,9 @@ public class ServicesBarberService {
         if (!service.getCoiffeur().getId().equals(coiffeurId)) {
             throw new AccessDeniedException("Ma-3ndekch l-7eqq t-msse7 had l-service!");
         }
-        serviceRepository.delete(service);
+        service.setDeleted(true);
+        
+        // serviceRepository.delete(service);
     }
 
 

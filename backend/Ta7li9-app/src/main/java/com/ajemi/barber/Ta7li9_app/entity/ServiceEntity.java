@@ -32,4 +32,5 @@ public class ServiceEntity {
     @JoinColumn(name = "coiffeur_id", nullable = false)
     @JsonIgnore
     private User coiffeur;
+    private boolean deleted = false;
 }

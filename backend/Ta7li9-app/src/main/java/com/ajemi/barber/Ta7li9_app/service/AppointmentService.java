@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,6 +22,7 @@ import com.ajemi.barber.Ta7li9_app.entity.User;
 import com.ajemi.barber.Ta7li9_app.repository.AppointmentRepository;
 import com.ajemi.barber.Ta7li9_app.repository.ServiceRepository;
 import com.ajemi.barber.Ta7li9_app.repository.UserRepository;
+import com.ajemi.barber.Ta7li9_app.security.UserPrincipal;
 
 @Service
 public class AppointmentService {
@@ -30,10 +32,12 @@ public class AppointmentService {
     private UserRepository userRepository;
     @Autowired
     private ServiceRepository serviceRepository;
+    @Autowired 
+    private SimpMessagingTemplate messagingTemplate;
 
     public List<User> searchClient(Long coiffeurId, String query) {
         // Stage 1: Qelleb f l-History dyalk (Prefix Search)
-        // Ila ktabتي "A", kiy-jbed Amine li fayt 7ssen 3ndek
+        // Ila ktabتي "A", kiy-jbed Amine li fayt 7ssen 3ndek   
         List<User> historyClients = appointmentRepository.findMyPastClients(coiffeurId, query);
         
         if (!historyClients.isEmpty()) {
@@ -53,54 +57,126 @@ public class AppointmentService {
     }
     
     @Transactional
-    public AppointmentResponseDTO createManualAppointment(Long coiffeurId, AppointmentRequestDTO dto) {
+    public AppointmentResponseDTO createAppointment(UserPrincipal currentUser, AppointmentRequestDTO dto) {
+        Long currentUserId = currentUser.getId();
+        boolean isClient = currentUser.getAuthorities().stream()
+                            .anyMatch(a -> a.getAuthority().equals("ROLE_CLIENT"));
+
+        // 1. Check Duplicate l l-Client (Zid PENDING l l-lista dyal l-verif)
+        if (isClient) {
+            boolean alreadyInQueue = appointmentRepository.existsByClientIdAndStatusIn(
+                currentUserId, 
+                List.of(AppointmentStatus.PENDING, AppointmentStatus.WAITING, AppointmentStatus.IN_PROGRESS)
+            );
+            if (alreadyInQueue) {
+                throw new RuntimeException("Rak dejà f n-nouba walla katti-tsenna acceptation!");
+            }
+        }
+
         AppointmentEntity appointment = new AppointmentEntity();
-        // 1. Jib l-Coiffeur
-        User coiffeur = userRepository.findById(coiffeurId)
-                .orElseThrow(() -> new RuntimeException("Coiffeur not found"));
-        appointment.setCoiffeur(coiffeur);
+        User coiffeur;
+        User client = null;
+        String manualName = null;
 
-        // 2. Jib les Services w jme3 l-waqt (Total Duration)
-        List<Long> serviceIds = dto.getServiceIds();
-        List<ServiceEntity> selectedServices = serviceRepository.findAllById(serviceIds);
-        int totalDuration = selectedServices.stream()
-                .mapToInt(ServiceEntity::getDuration)
-                .sum();
-        appointment.setServices(selectedServices);
-
-
-        // 3. Logic d n-nouba (The Heart of the Queue)
-        // Jib l-akhir wahed m-stti 3nd had l-coiffeur (Ordered by endTime DESC)
-
-        Optional<AppointmentEntity> lastApp = appointmentRepository.findTopByCoiffeurIdOrderByEndTimeDesc(coiffeurId);
-        LocalDateTime startTime;
-        LocalDateTime now = java.time.LocalDateTime.now();
-
-        if (lastApp.isPresent() && lastApp.get().getEndTime().isAfter(now)) {
-        startTime = lastApp.get().getEndTime(); // Bda m3a l-weqt fin kiy-salli s-sayed li qblu
-        } else {
-            startTime = now; // Ila l-ma7al khawi wala l-queue t-salat, bda dba nishan
-        }
-        appointment.setStartTime(startTime);
-        appointment.setEndTime(startTime.plusMinutes(totalDuration));
-        appointment.setStatus(com.ajemi.barber.Ta7li9_app.entity.AppointmentStatus.WAITING);
-
-        // 4. Client Logic (Registered vs Guest)
+        // --- Ta7did Roles ---
+        if (!isClient) { // Coiffeur Manual Add
+            coiffeur = userRepository.findById(currentUserId).orElseThrow(() -> new RuntimeException("Coiffeur not found"));
             if (dto.getClientId() != null) {
-            User client = userRepository.findById(dto.getClientId()).orElseThrow(() -> new RuntimeException("Client not found"));
-            appointment.setClient(client);
-            appointment.setManualClientName(null);
-        } else {
-            appointment.setClient(null);
-            appointment.setManualClientName(dto.getManualName()); // Smiya li dkhlti manual f Angular
+                client = userRepository.findById(dto.getClientId()).orElse(null);
+            } else {
+                manualName = dto.getManualName();
+            }
+            
+            // Manual add kiy-koun direct WAITING u kiy-7seb n-nouba
+            appointment.setStatus(AppointmentStatus.WAITING);
+            setupQueueTimes(appointment, coiffeur.getId(), dto.getServiceIds());
+        } 
+        else { // Client Send Demand
+            coiffeur = userRepository.findById(dto.getBarberId()).orElseThrow(() -> new RuntimeException("Coiffeur not found"));
+            client = userRepository.findById(currentUserId).orElseThrow(() -> new RuntimeException("Client context not found"));
+            
+            // Demand kiy-koun PENDING u weqt khawi
+            appointment.setStatus(AppointmentStatus.PENDING);
+            appointment.setStartTime(null);
+            appointment.setEndTime(null);
+            
+            // Services darouriyin wakha weqt null
+            List<ServiceEntity> selectedServices = serviceRepository.findAllById(dto.getServiceIds());
+            appointment.setServices(selectedServices);
         }
+
+        appointment.setCoiffeur(coiffeur);
+        appointment.setClient(client);
+        appointment.setManualClientName(manualName);
 
         AppointmentEntity savedApp = appointmentRepository.save(appointment);
-        return mapToResponseDTO(savedApp);
+        appointmentRepository.flush();
+        messagingTemplate.convertAndSend("/topic/queue/" + coiffeur.getId(), "UPDATE_QUEUE");
 
+        return mapToResponseDTO(savedApp);
     }
 
+    // Helper method bach mat-3awdch l-code dyal calculation
+    private void setupQueueTimes(AppointmentEntity app, Long coiffeurId, List<Long> serviceIds) {
+        List<ServiceEntity> services = serviceRepository.findAllById(serviceIds);
+        int totalDuration = services.stream().mapToInt(ServiceEntity::getDuration).sum();
+        app.setServices(services);
 
+        // 1. Filter: ghir WAITING u IN_PROGRESS
+        List<AppointmentStatus> activeStatuses = List.of(AppointmentStatus.WAITING, AppointmentStatus.IN_PROGRESS);
+        
+        // 2. Query
+        Optional<AppointmentEntity> lastApp = appointmentRepository
+                .findTopByCoiffeurIdAndStatusInOrderByEndTimeDesc(coiffeurId, activeStatuses);
+
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime startTime;
+
+        // 3. Safety Check: darouri n-takkdou beli endTime machi null
+        if (lastApp.isPresent() && lastApp.get().getEndTime() != null) {
+            LocalDateTime lastEndTime = lastApp.get().getEndTime();
+            // Ila akhir rdv salla qbel dba, bda dba. Ila baqi kheddam, bda m3ah.
+            startTime = lastEndTime.isAfter(now) ? lastEndTime : now;
+        } else {
+            // Ma-lqina walou walla l-rdv l-akhir khawi (null), bda dba
+            startTime = now;
+        }
+
+        app.setStartTime(startTime);
+        app.setEndTime(startTime.plusMinutes(totalDuration));
+    }
+
+    @Transactional
+    public AppointmentResponseDTO acceptAppointment(Long appointmentId) {
+        AppointmentEntity app = appointmentRepository.findById(appointmentId)
+                .orElseThrow(() -> new RuntimeException("Demand ma-lqinahch"));
+
+        if (app.getStatus() != AppointmentStatus.PENDING) {
+            throw new RuntimeException("Had l-rdv machi pending!");
+        }
+
+        // Nadi l-helper method li gadina l-fouq bach t-7seb lih n-nouba
+        List<Long> serviceIds = app.getServices().stream().map(ServiceEntity::getId).toList();
+        setupQueueTimes(app, app.getCoiffeur().getId(), serviceIds);
+
+        app.setStatus(AppointmentStatus.WAITING);
+        AppointmentEntity saved = appointmentRepository.save(app);
+
+        // Notify kolchi
+        messagingTemplate.convertAndSend("/topic/queue/" + app.getCoiffeur().getId(), "UPDATE_QUEUE");
+
+        return mapToResponseDTO(saved);
+    }
+    @Transactional
+    public void rejectAppointment(Long appointmentId) {
+        AppointmentEntity app = appointmentRepository.findById(appointmentId)
+                .orElseThrow(() -> new RuntimeException("Demand ma-lqinahch"));
+        
+        app.setStatus(AppointmentStatus.CANCELLED);
+        appointmentRepository.save(app);
+        
+        messagingTemplate.convertAndSend("/topic/queue/" + app.getCoiffeur().getId(), "UPDATE_QUEUE");
+    }
     private AppointmentResponseDTO mapToResponseDTO(AppointmentEntity entity) {
         AppointmentResponseDTO dto = new AppointmentResponseDTO();
         dto.setId(entity.getId());
@@ -181,25 +257,35 @@ public class AppointmentService {
     }
     // had queeue li ychofha coiffeur la2i7at l2intidar 
     public List<AppointmentResponseDTO> getTodayQueue(Long coiffeurId) {
-        // 1. 7seb s-sba7 w l-lil d lyoma nishan
-        LocalDateTime startOfDay = LocalDate.now().atStartOfDay(); // 00:00:00
-        LocalDateTime endOfDay = LocalDate.now().atTime(LocalTime.MAX); // 23:59:59
+        LocalDateTime startOfDay = LocalDate.now().atStartOfDay();
+        LocalDateTime endOfDay = LocalDate.now().atTime(LocalTime.MAX);
 
-        // 2. Statuses li bghina n-choufou f l-queue
-        List<AppointmentStatus> activeStatuses = List.of(
-            AppointmentStatus.WAITING, 
-            AppointmentStatus.IN_PROGRESS
+        // 1. Jib ga3 l-Appointments dyal had l-coiffeur (ga3 l-statuses li bghina)
+        List<AppointmentEntity> allApps = appointmentRepository.findByCoiffeurIdAndStatusIn(
+            coiffeurId, 
+            List.of(AppointmentStatus.PENDING, AppointmentStatus.WAITING, AppointmentStatus.IN_PROGRESS, AppointmentStatus.COMPLETED)
         );
 
-        // 3. Jib l-lista mn l-Base de données
-        List<AppointmentEntity> todayApps = appointmentRepository
-            .findByCoiffeurIdAndStatusInAndStartTimeBetweenOrderByStartTimeAsc(
-                coiffeurId, 
-                activeStatuses, 
-                startOfDay, 
-                endOfDay
-            );
+        // 2. Filter-i l-data f Java bach t-7ell mouchkil l-NULL u l-Dates
+        List<AppointmentEntity> filteredApps = allApps.stream()
+            .filter(app -> {
+                // A: Ila kan PENDING, khallih y-douz (wakha startTime null)
+                if (app.getStatus() == AppointmentStatus.PENDING) return true;
+                
+                // B: Ila kan status khor, khass darouri y-koun f lyoma
+                if (app.getStartTime() != null) {
+                    return !app.getStartTime().isBefore(startOfDay) && !app.getStartTime().isAfter(endOfDay);
+                }
+                return false;
+            })
+            .sorted((a, b) -> {
+                // Sort: PENDING y-jiw l-foq (wallah 7tarem l-weqt li dejà m-calculé)
+                if (a.getStartTime() == null || b.getStartTime() == null) return 0;
+                return a.getStartTime().compareTo(b.getStartTime());
+            })
+            .toList();
 
-        return todayApps.stream().map(this::mapToResponseDTO).toList();
+        System.out.println("Found Appointments: " + filteredApps.size());
+        return filteredApps.stream().map(this::mapToResponseDTO).toList();
     }
 }

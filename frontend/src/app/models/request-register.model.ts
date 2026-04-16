@@ -9,6 +9,6 @@ export interface RequestRegister {
 }
 
 export interface RequestLogin{
-  email:string;
+  phone:string;
   password:string;
 }

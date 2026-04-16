@@ -7,6 +7,8 @@ import { AppointmentService } from '../../../services/appointment.service';
 import { ServiceCatalogService } from '../../../services/service-catalog.service';
 import { AuthService } from '../../../services/auth';
 import { AppointmentResponseDTO, ServiceResponseDTO, User } from '../../../models/interfaces';
+import { WebsocketService } from '../../../services/websocket.service';
+import { ChangeDetectorRef } from '@angular/core';
 
 @Component({
   selector: 'app-barber-dashboard',
@@ -29,7 +31,7 @@ import { AppointmentResponseDTO, ServiceResponseDTO, User } from '../../../model
         </div>
         <div class="flex items-center gap-4">
           <span class="text-xs font-bold bg-neutral-900 px-3 py-1.5 rounded-full border border-neutral-800">
-            ROLE_COIFFEUR
+            {{ currentUser?.firstName }} {{ currentUser?.lastName }}
           </span>
           <button (click)="logout()" class="text-xs font-bold text-red-500 hover:text-red-400 uppercase tracking-widest">
             Logout
@@ -88,7 +90,25 @@ import { AppointmentResponseDTO, ServiceResponseDTO, User } from '../../../model
             Broadcasting status to clients...
           </p>
         </section>
+        <section *ngIf="pendingRequests.length > 0" class="mb-8">
+        <div class="flex items-center gap-2 mb-4">
+          <div class="w-2 h-2 bg-yellow-500 rounded-full animate-ping"></div>
+          <h2 class="text-sm text-yellow-500 font-black uppercase tracking-widest">New Demands ({{pendingRequests.length}})</h2>
+        </div>
 
+        <div class="space-y-3">
+          <div *ngFor="let req of pendingRequests" class="bg-neutral-900 border-2 border-yellow-500/20 rounded-[1.5rem] p-5 flex items-center justify-between">
+            <div>
+              <h3 class="font-black text-white uppercase">{{ req.clientName }}</h3>
+              <p class="text-[10px] font-bold text-neutral-500">{{ req.serviceNames.join(', ') }}</p>
+            </div>
+            <div class="flex gap-2">
+              <button (click)="rejectRequest(req.id)" class="p-3 bg-red-900/20 text-red-500 rounded-xl hover:bg-red-900/40 transition-all">✕</button>
+              <button (click)="acceptRequest(req.id)" class="px-5 py-3 bg-yellow-500 text-black font-black text-[10px] rounded-xl hover:bg-yellow-400 uppercase tracking-widest">Accept</button>
+            </div>
+          </div>
+        </div>
+      </section>
         <!-- TODAY'S QUEUE -->
         <section>
           <div class="flex items-center justify-between mb-4">
@@ -103,7 +123,7 @@ import { AppointmentResponseDTO, ServiceResponseDTO, User } from '../../../model
               No appointments in the queue.
             </div>
 
-            <div *ngFor="let apt of activeQueue; let i = index" 
+            <div *ngFor="let apt of activeQueue; let i = index; trackBy: trackByAptId" 
                  class="bg-neutral-900 border border-neutral-800 rounded-3xl p-5 flex items-center justify-between transition-all"
                  [ngClass]="{'border-yellow-500/50 shadow-[0_0_20px_rgba(234,179,8,0.1)]': i === 0}">
               
@@ -261,6 +281,7 @@ import { AppointmentResponseDTO, ServiceResponseDTO, User } from '../../../model
 })
 export class BarberDashboard implements OnInit {
   currentStatus: 'ACTIVE' | 'FULL' | 'OFFLINE' = 'OFFLINE';
+  currentUser: any;
   activeQueue: AppointmentResponseDTO[] = [];
   historyQueue: AppointmentResponseDTO[] = [];
   
@@ -282,18 +303,55 @@ export class BarberDashboard implements OnInit {
   newServiceName = '';
   newServicePrice: number | null = null;
   newServiceDuration: number | null = null;
+  pendingRequests: AppointmentResponseDTO[] = [];
 
   constructor(
     private router: Router,
     private auth: AuthService,
     private barberService: BarberService,
     private appointmentService: AppointmentService,
-    private catalogService: ServiceCatalogService
+    private catalogService: ServiceCatalogService,
+    private ws: WebsocketService,
+    private cdr: ChangeDetectorRef
   ) {}
 
   ngOnInit() {
+    this.ws.connect();
+    this.currentUser = this.auth.getCurrentUser();
     this.loadQueue();
     this.loadServices();
+    this.loadCurrentStatus();
+    this.initWebSocketListener();
+  }
+  initWebSocketListener() {
+    if (this.currentUser && this.currentUser.id) {
+      this.ws.subscribeToQueue(this.currentUser.id).subscribe(message => {
+        console.log("Signal Received:", message);
+        
+        // 🔥 Zid had l-Timeout sghir hna
+        setTimeout(() => {
+          console.log("Refreshing queue now...");
+          this.loadQueue(); // Daba l-DB ghadi t-koun dejà updated
+        }, 500); // 0.5 saniya kafiwa bach l-backend y-commit-i l-data
+      });
+    }
+  }
+  ngOnDestroy() {
+    this.ws.disconnect();
+  }
+
+  loadCurrentStatus() {
+    this.barberService.getCurrentStatus().subscribe({
+      next: (status: any) => {
+        // Takked beli status katchbah l 'ACTIVE', 'FULL' walla 'OFFLINE'
+        
+        this.currentStatus = status;
+        console.log(this.currentStatus);
+      },
+      error: (err) => {
+        console.error("Ma-qdrnach njibo l-status", err);
+      }
+    });
   }
 
   logout() {
@@ -308,10 +366,37 @@ export class BarberDashboard implements OnInit {
   }
 
   loadQueue() {
-    this.appointmentService.getTodayQueue().subscribe(res => {
-      this.activeQueue = res.filter(a => a.status === 'WAITING' || a.status === 'IN_PROGRESS');
-      this.historyQueue = res.filter(a => a.status === 'COMPLETED');
+    this.appointmentService.getTodayQueue().subscribe({
+      next: (res) => {
+        // 1. Demandes li baqi ma-t-acceptawch
+        console.log(this.pendingRequests);
+        
+        this.pendingRequests = res.filter(a => a.status === 'PENDING');
+        // Filter l-appointments b7al dima
+        this.activeQueue = res.filter(a => a.status === 'WAITING' || a.status === 'IN_PROGRESS');
+        this.historyQueue = res.filter(a => a.status === 'COMPLETED');
+        
+        // 🔥 Zid hadi hna darouri bach t-t-refresh l-UI
+        this.cdr.detectChanges();
+      },
+      error: (err) => console.error("Erreur f loadQueue", err)
     });
+  }
+  // Zid had l-functions jdad:
+  acceptRequest(id: number) {
+    this.appointmentService.acceptAppointment(id).subscribe(() => {
+      this.loadQueue(); // Refresh kolchi
+    });
+  }
+
+  rejectRequest(id: number) {
+    this.appointmentService.rejectAppointment(id).subscribe(() => {
+      this.loadQueue(); // Refresh kolchi
+    });
+  }
+
+  trackByAptId(index: number, item: AppointmentResponseDTO) {
+    return item.id;
   }
 
   loadServices() {

@@ -30,4 +30,11 @@ export class AppointmentService {
   completeAppointment(id: number): Observable<AppointmentResponseDTO> {
     return this.http.put<AppointmentResponseDTO>(`${this.baseUrl}/${id}/done`, {});
   }
+  acceptAppointment(id: number): Observable<any> {
+    return this.http.put(`${this.baseUrl}/${id}/accept`, {});
+  }
+
+  rejectAppointment(id: number): Observable<any> {
+    return this.http.put(`${this.baseUrl}/${id}/reject`, {});
+  }
 }

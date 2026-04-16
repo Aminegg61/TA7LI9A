@@ -81,35 +81,70 @@ import { CommonModule } from '@angular/common';
                   placeholder="Doe">
               </div>
             </div>
+            <div class="space-y-1">
+              <label class="text-[10px] font-black uppercase tracking-widest text-neutral-500 ml-1">Email</label>
+              <input formControlName="email" type="email" 
+                class="w-full bg-neutral-950 border border-neutral-800 rounded-xl px-4 py-3 text-sm font-bold text-white focus:outline-none focus:border-yellow-500 focus:ring-1 focus:ring-yellow-500 transition-colors placeholder:text-neutral-700" 
+                placeholder="you@example.com">
+            </div>
             
+            </ng-container>
+            
+            <!-- Common Fields -->
             <div class="space-y-1">
               <label class="text-[10px] font-black uppercase tracking-widest text-neutral-500 ml-1">Phone Number</label>
-              <input formControlName="phoneNumber" type="tel" 
-                class="w-full bg-neutral-950 border border-neutral-800 rounded-xl px-4 py-3 text-sm font-bold text-white focus:outline-none focus:border-yellow-500 focus:ring-1 focus:ring-yellow-500 transition-colors placeholder:text-neutral-700" 
+              
+              <input 
+                formControlName="phoneNumber" 
+                type="tel" 
+                class="w-full bg-neutral-950 border rounded-xl px-4 py-3 text-sm font-bold text-white focus:outline-none transition-all"
+                [class.border-red-500]="isFieldInvalid('phoneNumber')"
+                [class.border-neutral-800]="!isFieldInvalid('phoneNumber')"
+                [class.focus:border-yellow-500]="!isFieldInvalid('phoneNumber')"
                 placeholder="0612345678">
-            </div>
-          </ng-container>
 
-          <!-- Common Fields -->
-          <div class="space-y-1">
-            <label class="text-[10px] font-black uppercase tracking-widest text-neutral-500 ml-1">Email</label>
-            <input formControlName="email" type="email" 
-              class="w-full bg-neutral-950 border border-neutral-800 rounded-xl px-4 py-3 text-sm font-bold text-white focus:outline-none focus:border-yellow-500 focus:ring-1 focus:ring-yellow-500 transition-colors placeholder:text-neutral-700" 
-              placeholder="you@example.com">
-          </div>
+              <div *ngIf="isFieldInvalid('phoneNumber')" class="mt-1 ml-1 flex flex-col gap-1">
+                <span *ngIf="form.get('phoneNumber')?.errors?.['required']" class="text-red-500 text-[10px] font-bold italic">
+                  Had l-7aqal darouri!
+                </span>
+                <span *ngIf="form.get('phoneNumber')?.errors?.['pattern']" class="text-red-500 text-[10px] font-bold italic">
+                  Had l-u-katba "jvwdjjd" machi nemra. Khas 10 d l-arqaam!
+                </span>
+              </div>
+            </div>
 
           <div class="space-y-1">
             <label class="text-[10px] font-black uppercase tracking-widest text-neutral-500 ml-1">Password</label>
-            <input formControlName="password" type="password" 
-              class="w-full bg-neutral-950 border border-neutral-800 rounded-xl px-4 py-3 text-sm font-bold text-white focus:outline-none focus:border-yellow-500 focus:ring-1 focus:ring-yellow-500 transition-colors placeholder:text-neutral-700" 
+            <input 
+              formControlName="password" 
+              type="password" 
+              class="w-full bg-neutral-950 border rounded-xl px-4 py-3 text-sm font-bold text-white focus:outline-none transition-all placeholder:text-neutral-700" 
+              [class.border-red-500]="isFieldInvalid('password')"
+              [class.border-neutral-800]="!isFieldInvalid('password')"
+              [class.focus:border-yellow-500]="!isFieldInvalid('password')"
               placeholder="••••••••">
+
+            <div *ngIf="isFieldInvalid('password')" class="mt-1 ml-1 flex flex-col gap-1">
+              <span *ngIf="form.get('password')?.errors?.['required']" class="text-red-500 text-[10px] font-bold italic">
+                Password darouri bach t-dkhol!
+              </span>
+              <span *ngIf="form.get('password')?.errors?.['minlength']" class="text-red-500 text-[10px] font-bold italic">
+                Password khass ykoun fih 6 d l-7ourouf l-aqall.
+              </span>
+            </div>
           </div>
 
           <div class="space-y-1" *ngIf="!isLogin">
             <label class="text-[10px] font-black uppercase tracking-widest text-neutral-500 ml-1">Confirm Password</label>
-            <input formControlName="confirmPassword" type="password" 
-              class="w-full bg-neutral-950 border border-neutral-800 rounded-xl px-4 py-3 text-sm font-bold text-white focus:outline-none focus:border-yellow-500 focus:ring-1 focus:ring-yellow-500 transition-colors placeholder:text-neutral-700" 
+            <input 
+              formControlName="confirmPassword" 
+              type="password" 
+              class="w-full bg-neutral-950 border border-neutral-800 rounded-xl px-4 py-3 text-sm font-bold text-white focus:outline-none focus:border-yellow-500 focus:ring-1 focus:ring-yellow-500 transition-colors" 
               placeholder="••••••••">
+              
+            <p *ngIf="errorMessage === 'Passwords do not match'" class="text-red-500 text-[10px] mt-1 ml-1 font-bold italic">
+              L-passwords machi b7al b7al!
+            </p>
           </div>
 
           <button 
@@ -154,11 +189,17 @@ export class Auth implements OnInit {
     private route: ActivatedRoute
   ) {
     this.form = this.fb.group({
-      email: ['', [Validators.required, Validators.email]],
-      password: ['', Validators.required],
-      firstName: [''],
-      lastName: [''],
-      phoneNumber: [''],
+      email: [''],
+      password: ['', {
+        validators: [Validators.required, Validators.minLength(6)],
+        updateOn: 'change' 
+      }],
+      firstName: ['',{ validators: [], updateOn: 'blur' }],
+      lastName: ['',{ validators: [], updateOn: 'blur' }],
+      phoneNumber: ['', {
+        validators: [Validators.required, Validators.pattern('^[0-9]{10}$')],
+        updateOn: 'blur' // HADI HIYA L-MOHIMA
+      }],
       confirmPassword: ['']
     });
   }
@@ -175,6 +216,11 @@ export class Auth implements OnInit {
     }
   }
 
+  isFieldInvalid(field: string): boolean {
+    const control = this.form.get(field);
+    return !!(control && control.invalid && (control.touched || control.dirty));
+  }
+
   setRole(r: 'CLIENT' | 'COIFFEUR') {
     this.role = r;
   }
@@ -183,10 +229,36 @@ export class Auth implements OnInit {
     this.isLogin = !this.isLogin;
     this.errorMessage = '';
     this.successMessage = '';
+
+    // Kan-jabdo l-controls li m-mrtabtinsh b l-Login
+    const registerFields = ['firstName', 'lastName', 'email'];
+
+    registerFields.forEach(fieldName => {
+      const control = this.form.get(fieldName);
+      if (control) {
+        if (!this.isLogin) {
+          // ILA KNA F REGISTER: Zid l-validators
+          control.setValidators([Validators.required]);
+          if (fieldName === 'email') {
+            control.setValidators([Validators.required, Validators.email]);
+          }
+        } else {
+          // ILA KNA F LOGIN: 7iyed l-validators bach l-form t-welli Valid
+          control.clearValidators();
+        }
+        // DAROURI: t-goul l-Angular y-3awed y-calculi wach l-field valid walla la
+        control.updateValueAndValidity();
+      }
+    });
   }
 
   onSubmit() {
-    if (this.form.invalid) return;
+    if (this.form.invalid) {
+      // Hadi kat-khalli ayy input fih error y-welli 7mer 
+      this.form.markAllAsTouched();
+      this.errorMessage = 'Please fix the errors in the form.';
+      return;
+    }
 
     this.loading = true;
     this.errorMessage = '';
@@ -195,14 +267,14 @@ export class Auth implements OnInit {
     const val = this.form.value;
 
     if (this.isLogin) {
-      this.authService.login({ email: val.email, password: val.password }).subscribe({
+      this.authService.login({ phoneNumber: val.phoneNumber, password: val.password }).subscribe({
         next: (res: any) => {
           localStorage.setItem('token', res.token);
           this.redirectByRole(res.role);
         },
         error: (err) => {
           this.loading = false;
-          this.errorMessage = 'Login failed. Please check your credentials.';
+          this.errorMessage = 'Numéro de téléphone ou mot de passe incorrect';
         }
       });
     } else {

@@ -1,77 +1,56 @@
 import { Injectable } from '@angular/core';
-import { Client } from '@stomp/stompjs';
+import { Client, StompSubscription } from '@stomp/stompjs';
 import SockJS from 'sockjs-client';
-import { Observable, Subject } from 'rxjs';
+import { BehaviorSubject, Observable, filter, switchMap, first } from 'rxjs';
 
-@Injectable({
-  providedIn: 'root'
-})
+@Injectable({ providedIn: 'root' })
 export class WebsocketService {
   private stompClient: Client;
-  private connectionSubject: Subject<boolean> = new Subject<boolean>();
-  private statusSubjects: { [barberId: number]: Subject<string> } = {};
+  private isConnected$ = new BehaviorSubject<boolean>(false);
 
   constructor() {
     this.stompClient = new Client({
-      // We use webSocketFactory because standard SockJS usage in STOMP v5 
-      // needs a custom factory when mixing with SockJS.
-      webSocketFactory: () => {
-        return new SockJS('http://localhost:8080/ws-ta7li9a') as any;
-      },
-      debug: (str) => {
-        // console.log(str); // Disabled for prod
-      },
+      webSocketFactory: () => new SockJS('http://localhost:8080/ws-ta7li9a'),
       reconnectDelay: 5000,
-      heartbeatIncoming: 4000,
-      heartbeatOutgoing: 4000,
+      debug: (str) => console.log('STOMP:', str)
     });
 
-    this.stompClient.onConnect = (frame) => {
-      this.connectionSubject.next(true);
-    };
-
-    this.stompClient.onStompError = (frame) => {
-      this.connectionSubject.next(false);
-    };
+    this.stompClient.onConnect = () => this.isConnected$.next(true);
+    this.stompClient.onDisconnect = () => this.isConnected$.next(false);
   }
 
-  public connect(): void {
-    if (!this.stompClient.active) {
-      this.stompClient.activate();
-    }
+  public connect() {
+    if (!this.stompClient.active) this.stompClient.activate();
   }
 
-  public disconnect(): void {
-    if (this.stompClient.active) {
-      this.stompClient.deactivate();
-    }
+  public disconnect() {
+    if (this.stompClient.active) this.stompClient.deactivate();
   }
 
-  public isConnected(): Observable<boolean> {
-    return this.connectionSubject.asObservable();
-  }
-
+  // Hadi hiya l-logic s-s7i7a: k-t-tsenna l-connexion 3ad k-t-dir subscribe
   public subscribeToBarberStatus(barberId: number): Observable<string> {
-    if (!this.statusSubjects[barberId]) {
-      this.statusSubjects[barberId] = new Subject<string>();
-
-      const subscribeWhenReady = () => {
-        this.stompClient.subscribe(`/topic/status/${barberId}`, (message) => {
-          this.statusSubjects[barberId].next(message.body);
+    return this.isConnected$.pipe(
+      filter(connected => connected === true), // Tsennah 7ta y-welli connected
+      switchMap(() => new Observable<string>(observer => {
+        const topic = `/topic/status/${barberId}`;
+        const subscription = this.stompClient.subscribe(topic, (message) => {
+          observer.next(message.body);
         });
-      };
-
-      if (this.stompClient.connected) {
-        subscribeWhenReady();
-      } else {
-        // Wait till connected
-        this.stompClient.onConnect = () => {
-          this.connectionSubject.next(true);
-          subscribeWhenReady();
-        };
-      }
-    }
-
-    return this.statusSubjects[barberId].asObservable();
+        return () => subscription.unsubscribe();
+      }))
+    );
+  }
+  public subscribeToQueue(barberId: number): Observable<string> {
+    return this.isConnected$.pipe(
+      filter(connected => connected === true),
+      switchMap(() => new Observable<string>(observer => {
+        // HNA KHASS YKOUN /topic/queue/ BACH T-MATCHEY L-BACKEND
+        const topic = `/topic/queue/${barberId}`; 
+        const subscription = this.stompClient.subscribe(topic, (message) => {
+          observer.next(message.body);
+        });
+        return () => subscription.unsubscribe();
+      }))
+    );
   }
 }

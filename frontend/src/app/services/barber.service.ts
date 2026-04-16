@@ -14,6 +14,9 @@ export class BarberService {
   updateStatus(status: 'ACTIVE' | 'FULL' | 'OFFLINE'): Observable<void> {
     return this.http.put<void>(`${this.baseUrl}/status?status=${status}`, {});
   }
+  getCurrentStatus(): Observable<string> {
+   return this.http.get(`${this.baseUrl}/status`, { responseType: 'text' });
+  }
 
   searchBarbers(query: string): Observable<BarberSearchDto[]> {
     return this.http.get<BarberSearchDto[]>(`http://localhost:8080/api/barbers/search?q=${query}`);
