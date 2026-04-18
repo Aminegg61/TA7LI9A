@@ -194,10 +194,13 @@ import { ChangeDetectorRef } from '@angular/core';
               <div *ngIf="searchResults.length > 0" class="bg-neutral-950 border border-neutral-800 rounded-xl p-2 mt-2 max-h-40 overflow-y-auto">
                 <button *ngFor="let user of searchResults" 
                         (click)="selectUser(user)"
-                        class="w-full text-left px-3 py-2 rounded-lg hover:bg-neutral-900 transition-colors flex justify-between items-center"
-                        [ngClass]="{'bg-neutral-800 border border-yellow-500/30': manualClientId === user.id}">
+                        [disabled]="isUserInQueue(user.id)"
+                        class="w-full text-left px-3 py-2 rounded-lg transition-colors flex justify-between items-center"
+                        [ngClass]="{'opacity-50 grayscale cursor-not-allowed bg-red-900/10': isUserInQueue(user.id)}">
+                  
                   <span class="font-bold text-sm">{{ user.firstName }} {{ user.lastName }}</span>
-                  <span class="text-xs text-neutral-500">{{ user.phoneNumber }}</span>
+                  <span *ngIf="isUserInQueue(user.id)" class="text-[8px] font-black bg-red-500 text-white px-2 py-1 rounded italic uppercase">Already in Queue</span>
+                  <span *ngIf="!isUserInQueue(user.id)" class="text-xs text-neutral-500">{{ user.phoneNumber }}</span>
                 </button>
               </div>
 
@@ -438,10 +441,25 @@ export class BarberDashboard implements OnInit {
   }
 
   selectUser(user: User) {
+    // 1. Qelleb wach l-ID dyal had l-user dejà kayn f n-nouba
+    const isAlreadyInQueue = 
+      this.activeQueue.some(apt => apt.clientId === user.id) || 
+      this.pendingRequests.some(apt => apt.clientId === user.id);
+      if (isAlreadyInQueue) {
+        alert("Had l-klyan dejà rah f n-nouba! Ma-tqderch t-zidou marra khor.");
+        this.searchQuery = '';
+        this.searchResults = [];
+        return; // 7bess hna
+      }
     this.manualClientId = user.id;
     this.manualName = '';
     this.searchQuery = user.firstName + ' ' + user.lastName;
     this.searchResults = [];
+  }
+
+  isUserInQueue(userId: number): boolean {
+    return this.activeQueue.some(apt => apt.clientId === userId) || 
+          this.pendingRequests.some(apt => apt.clientId === userId);
   }
 
   toggleService(id: number) {

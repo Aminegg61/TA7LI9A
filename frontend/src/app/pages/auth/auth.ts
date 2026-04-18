@@ -296,6 +296,8 @@ export class Auth implements OnInit {
         next: (res) => {
           this.loading = false;
           this.successMessage = 'Registration successful! Please login.';
+          localStorage.setItem('token', res.token);
+          this.redirectByRole(res.role);
           this.isLogin = true;
           this.form.reset();
         },

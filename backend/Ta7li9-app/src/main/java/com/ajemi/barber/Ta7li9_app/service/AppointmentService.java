@@ -112,7 +112,11 @@ public class AppointmentService {
         AppointmentEntity savedApp = appointmentRepository.save(appointment);
         appointmentRepository.flush();
         messagingTemplate.convertAndSend("/topic/queue/" + coiffeur.getId(), "UPDATE_QUEUE");
-
+        // 2. Notify l-Client (ILA KAN registered user, ya3ni 3ndou clientID)
+            if (appointment.getClient() != null) {
+                String clientTopic = "/topic/user/" + appointment.getClient().getId();
+                messagingTemplate.convertAndSend(clientTopic, "QUEUE_UPDATED");
+            }
         return mapToResponseDTO(savedApp);
     }
 
@@ -164,7 +168,7 @@ public class AppointmentService {
 
         // Notify kolchi
         messagingTemplate.convertAndSend("/topic/queue/" + app.getCoiffeur().getId(), "UPDATE_QUEUE");
-
+        
         return mapToResponseDTO(saved);
     }
     @Transactional
@@ -183,8 +187,10 @@ public class AppointmentService {
         
         // Logic dyal s-smiya: User official wala Manual
         if (entity.getClient() != null) {
+            dto.setClientId(entity.getClient().getId());
             dto.setClientName(entity.getClient().getFirstName() + " " + entity.getClient().getLastName());
         } else {
+            dto.setClientId(null);
             dto.setClientName(entity.getManualClientName());
         }
 
@@ -252,7 +258,14 @@ public class AppointmentService {
                 
         app.setStatus(AppointmentStatus.COMPLETED);
         app.setEndTime(LocalDateTime.now()); // Salla dba
-        
+        appointmentRepository.saveAndFlush(app);
+    if (app.getClient() != null) {
+            System.out.println("Sending signal to user: " + app.getClient().getId()); // <--- CHOUF WACH KAT-TLA3 HADI
+            String clientTopic = "/topic/user/" + app.getClient().getId();
+            messagingTemplate.convertAndSend(clientTopic, "QUEUE_UPDATED");
+        } else {
+            System.out.println("Client is NULL - No signal sent"); // <--- ILA TLA3AT HADI, RA L-ENTITY MA-FIHACH CLIENT
+        }
         return mapToResponseDTO(appointmentRepository.save(app));
     }
     // had queeue li ychofha coiffeur la2i7at l2intidar 
@@ -287,5 +300,19 @@ public class AppointmentService {
 
         System.out.println("Found Appointments: " + filteredApps.size());
         return filteredApps.stream().map(this::mapToResponseDTO).toList();
+    }
+
+    public AppointmentResponseDTO getMyActiveAppointment(Long clientId) {
+        // 1. Chnou houma l-statuses li kiy-3niw beli s-sayed rah "In Line"?
+        List<AppointmentStatus> activeStatuses = List.of(
+            AppointmentStatus.PENDING, 
+            AppointmentStatus.WAITING, 
+            AppointmentStatus.IN_PROGRESS
+        );
+
+        // 2. Jib l-rdv l-akhir (li fih weqt qrib) dyal had l-client
+        return appointmentRepository.findTopByClientIdAndStatusInOrderByStartTimeAsc(clientId, activeStatuses)
+                .map(this::mapToResponseDTO)
+                .orElse(null); // Ila malqach rdv, kiy-rejje3 null
     }
 }

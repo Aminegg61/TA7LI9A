@@ -6,7 +6,7 @@ import { BarberService } from '../../../services/barber.service';
 import { WebsocketService } from '../../../services/websocket.service';
 import { AppointmentService } from '../../../services/appointment.service';
 import { ServiceCatalogService } from '../../../services/service-catalog.service';
-import { AppointmentRequestDTO, BarberSearchDto, ServiceResponseDTO, User } from '../../../models/interfaces';
+import { AppointmentRequestDTO, AppointmentResponseDTO, BarberSearchDto, ServiceResponseDTO, User } from '../../../models/interfaces';
 import { Subscription } from 'rxjs';
 import { ChangeDetectorRef } from '@angular/core';
 import { AuthService } from '../../../services/auth';
@@ -129,21 +129,24 @@ import { AuthService } from '../../../services/auth';
               </div>
 
 
-              <button *ngIf="barber.currentStatus === 'ACTIVE' && !barber.inQueue"
-                      (click)="openServiceSelection(barber.id)"
-                      class="w-full bg-yellow-500 text-black font-black uppercase tracking-widest py-4 rounded-xl hover:bg-yellow-400 transition-all active:scale-[0.98]">
-                Send a Demand
-              </button>
+<button *ngIf="barber.currentStatus === 'ACTIVE' && !userAppointment"
+        (click)="openServiceSelection(barber.id)"
+        class="w-full bg-yellow-500 text-black font-black uppercase tracking-widest py-4 rounded-xl hover:bg-yellow-400 transition-all active:scale-[0.98]">
+  Send a Demand
+</button>
 
-              <div *ngIf="barber.inQueue"
-                  class="w-full bg-neutral-950 text-neutral-500 text-center font-black uppercase tracking-widest py-4 rounded-xl border border-neutral-800 shadow-inner">
-                Already In Line
-              </div>
-              
-              <div *ngIf="barber.currentStatus !== 'ACTIVE' || barber.inQueue"
-                   class="w-full bg-neutral-950 text-neutral-500 text-center font-black uppercase tracking-widest py-4 rounded-xl border border-neutral-800 shadow-inner">
-                {{ barber.inQueue ? 'Already In Line' : 'Not Available currently' }}
-              </div>
+<div *ngIf="userAppointment"
+     class="w-full bg-neutral-950 text-neutral-500 text-center font-black uppercase tracking-widest py-4 rounded-xl border border-neutral-800 shadow-inner">
+  <span class="flex items-center justify-center gap-2">
+    <span class="w-2 h-2 bg-yellow-500 rounded-full animate-pulse"></span>
+    Already In Line
+  </span>
+</div>
+
+<div *ngIf="barber.currentStatus !== 'ACTIVE' && !userAppointment"
+     class="w-full bg-neutral-950 text-neutral-500 text-center font-black uppercase tracking-widest py-4 rounded-xl border border-neutral-800 shadow-inner">
+  Not Available currently
+</div>
             </div>
 
             <!-- Accent line -->
@@ -212,7 +215,7 @@ import { AuthService } from '../../../services/auth';
           </div>
 
           <div class="mt-8 flex gap-3 pt-4 border-t border-neutral-800">
-            <button (click)="serviceSelectOpen = false" class="flex-1 bg-neutral-950 border border-neutral-800 text-neutral-400 font-black uppercase tracking-widest py-3 rounded-xl hover:text-white">Cancel</button>
+            <button (click)="closeModal()" class="flex-1 bg-neutral-950 border border-neutral-800 text-neutral-400 font-black uppercase tracking-widest py-3 rounded-xl hover:text-white">Cancel</button>
             <button (click)="submitRequest()" class="flex-1 bg-yellow-500 text-black font-black uppercase tracking-widest py-3 rounded-xl hover:bg-yellow-400 disabled:opacity-50">Confirm</button>
           </div>
         </div>
@@ -238,9 +241,10 @@ export class ClientDashboard implements OnInit, OnDestroy {
   targetBarberId: number | null = null;
   barberServices: ServiceResponseDTO[] = [];
   selectedServices: number[] = [];
-
-  private subscriptions: Subscription[] = [];
-
+  userAppointment: AppointmentResponseDTO | null = null;
+  // private subscriptions: Subscription[] = [];
+  private barberSubs: Subscription[] = [];
+  private userSubs: Subscription[] = [];
   constructor(
     private auth: AuthService,  
     private router: Router,
@@ -253,12 +257,49 @@ export class ClientDashboard implements OnInit, OnDestroy {
 
   ngOnInit() {
     this.currentUser = this.auth.getCurrentUser();
+    console.log(this.currentUser);
+    
     this.ws.connect();
     this.loadLists();
+    // 1. Jib status mlli y-7ell l-app (ila kan dejà m-zid)
+    this.loadMyStatus();
+    
+    // 2. Tsennay l-jdid real-time
+
+       this.initUserWebSocket();
+
+  }
+
+  initUserWebSocket() {
+    if (this.currentUser && this.currentUser.id) {
+      // Subscribe l l-topic dyal had l-user b-dabt
+      const sub = this.ws.subscribeToUser(this.currentUser.id).subscribe(msg => {
+        console.log("WebSocket Message received for User:", msg);
+        if (msg === 'QUEUE_UPDATED') {
+          // Tsenna nos saniya bach Backend y-commit-i l-DB
+        
+          setTimeout(() => this.loadMyStatus(), 500);
+        }
+      });
+      this.userSubs.push(sub);
+    }
+  }
+
+  loadMyStatus() {
+    this.appointmentService.getMyActiveAppointment().subscribe(res => {
+
+      // 👇 ما تبدل والو إلا modal محلول
+      if (this.serviceSelectOpen) return;
+
+      this.userAppointment = res;
+
+      this.cdr.detectChanges();
+    });
   }
 
   ngOnDestroy() {
-    this.subscriptions.forEach(s => s.unsubscribe());
+    this.barberSubs.forEach(s => s.unsubscribe());
+    this.userSubs.forEach(s => s.unsubscribe());
     this.ws.disconnect();
   }
 
@@ -273,8 +314,8 @@ export class ClientDashboard implements OnInit, OnDestroy {
 
   loadLists() {
     // Unsubscribe from old
-    this.subscriptions.forEach(s => s.unsubscribe());
-    this.subscriptions = [];
+    this.barberSubs.forEach(s => s.unsubscribe());
+    this.barberSubs = [];
 
     this.barberService.getMyBarbers().subscribe(list => {
       this.myBarbers = list;
@@ -287,25 +328,24 @@ export class ClientDashboard implements OnInit, OnDestroy {
     });
   }
 
-subscribeToBarbers(list: BarberSearchDto[]) {
+  subscribeToBarbers(list: BarberSearchDto[]) {
+    this.barberSubs.forEach(s => s.unsubscribe());
+    this.barberSubs = [];
+
     list.forEach(b => {
       const sub = this.ws.subscribeToBarberStatus(b.id).subscribe(newStatus => {
-        console.log(`Update Real-time dyal ${b.firstName}: ${newStatus}`);
-        
-        const updateInList = (arr: BarberSearchDto[]) => {
-          const match = arr.find(x => x.id === b.id);
-          if (match) {
-            match.currentStatus = newStatus as any;
-          }
+        const update = (arr: BarberSearchDto[]) => {
+          const found = arr.find(x => x.id === b.id);
+          if (found) found.currentStatus = newStatus as any;
         };
 
-        updateInList(this.myBarbers);
-        updateInList(this.myFavorites);
+        update(this.myBarbers);
+        update(this.myFavorites);
 
-        // 3. FORCE-I ANGULAR Y-CHOUF L-JDID
-        this.cdr.detectChanges(); 
+        this.cdr.detectChanges();
       });
-      this.subscriptions.push(sub);
+
+      this.barberSubs.push(sub);
     });
   }
 
@@ -362,14 +402,20 @@ subscribeToBarbers(list: BarberSearchDto[]) {
 
   // --- Appointment Request ---
   openServiceSelection(barberId: number) {
+    console.log(this.serviceSelectOpen);
+    
     this.targetBarberId = barberId;
     this.selectedServices = [];
     this.barberServices = [];
-    this.serviceSelectOpen = true;
-
     this.catalogService.getBarberServices(barberId).subscribe(res => {
-      this.barberServices = res;
-    });
+    console.log("SERVICES:", res); // 👈 مهم
+    this.barberServices = res;
+    this.serviceSelectOpen = true;   
+    this.cdr.detectChanges();
+  });
+
+
+
   }
 
   toggleService(id: number) {
@@ -380,24 +426,28 @@ subscribeToBarbers(list: BarberSearchDto[]) {
       this.selectedServices.push(id);
     }
   }
+  closeModal() {
+    this.serviceSelectOpen = false;
+    this.cdr.detectChanges();
+  }
 
-submitRequest() {
-  if (this.selectedServices.length === 0 || !this.targetBarberId) return;
-  
-  const payload: AppointmentRequestDTO = {
-    barberId: this.targetBarberId,
-    serviceIds: this.selectedServices,
-    manualName: '',   // Beddel null b string khawi
-    clientId: undefined // Blast null, ista3mel undefined ila kan optional
-  };
+  submitRequest() {
+    if (this.selectedServices.length === 0 || !this.targetBarberId) return;
+    
+    const payload: AppointmentRequestDTO = {
+      barberId: this.targetBarberId,
+      serviceIds: this.selectedServices,
+      manualName: '',   // Beddel null b string khawi
+      clientId: undefined // Blast null, ista3mel undefined ila kan optional
+    };
 
-  this.appointmentService.createAppointment(payload).subscribe({
-    next: () => {
-      console.log(payload);
-      
-      this.serviceSelectOpen = false;
-      this.loadLists();
-    }
-  });
-}
+    this.appointmentService.createAppointment(payload).subscribe({
+      next: () => {
+        console.log(payload);
+        
+        this.serviceSelectOpen = false;
+        this.loadLists();
+      }
+    });
+  }
 }

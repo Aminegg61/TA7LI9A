@@ -73,4 +73,12 @@ public class AppointmentController {
         appointmentService.rejectAppointment(id); // Kat-beddel status l CANCELLED
         return ResponseEntity.noContent().build();
     }
+
+    @GetMapping("/my-active")
+    public ResponseEntity<AppointmentResponseDTO> getMyActiveAppointment(
+        @AuthenticationPrincipal UserPrincipal currentUser) {
+        // currentUser.getId() ghadi y-3tina ID dyal l-klyan li m-connecti
+        AppointmentResponseDTO response = appointmentService.getMyActiveAppointment(currentUser.getId());
+        return ResponseEntity.ok(response);
+    }
 }

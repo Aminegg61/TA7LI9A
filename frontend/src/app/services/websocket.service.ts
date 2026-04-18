@@ -53,4 +53,17 @@ export class WebsocketService {
       }))
     );
   }
+  public subscribeToUser(userId: number): Observable<string> {
+    const topic = `/topic/user/${userId}`;
+
+    return this.isConnected$.pipe(
+      filter(connected => connected === true),
+      switchMap(() => new Observable<string>(observer => {
+        const sub = this.stompClient.subscribe(topic, (message) => {
+          observer.next(message.body);
+        });
+        return () => sub.unsubscribe();
+      }))
+    );
+  }
 }

@@ -23,7 +23,7 @@ public class AuthService {
     @Autowired
     private JwtUtils jwtUtils;
 
-    public void register(RequestRegister body) {
+    public LoginResponse register(RequestRegister body) {
         if (userRepository.existsByEmail(body.getEmail())) {
             throw new RuntimeException("Email already exists");
         }
@@ -52,6 +52,9 @@ public class AuthService {
         user.setPassword(passwordEncoder.encode(body.getPassword()));
         user.setPhoneNumber(body.getPhoneNumber());
         userRepository.save(user);
+                // 3. Generi l-token
+        String token = jwtUtils.generateJwtToken(user);
+        return new LoginResponse(token, user.getEmail(), user.getRole());
     }
 
     public LoginResponse login(RequestLogin body) {

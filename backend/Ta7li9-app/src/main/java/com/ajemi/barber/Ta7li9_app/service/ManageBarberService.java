@@ -41,12 +41,12 @@ public class ManageBarberService {
                         isFav = followedRepository.existsByClientAndBarber(
                             userRepository.getReferenceById(clientId), barber);
                     }
-                    return convertToDto(barber, isFav);
+                    return convertToDto(barber, isFav,clientId);
                 })
                 .collect(Collectors.toList());
     }
 
-    private BarberSearchDto convertToDto(User user, boolean isFav) {
+    private BarberSearchDto convertToDto(User user, boolean isFav,Long id) {
         BarberSearchDto dto = new BarberSearchDto();
         dto.setId(user.getId());
         dto.setFirstName(user.getFirstName());
@@ -57,8 +57,11 @@ public class ManageBarberService {
             // 🕒 estimated wait time
         int waitTime = calculateEstimatedWaitTime(user.getId());
         dto.setEstimatedWaitTime(waitTime);
-
-        dto.setInQueue(false); // غادي نحسبوها بعداً
+                    boolean alreadyInQueue = appointmentRepository.existsByClientIdAndStatusIn(
+                id, 
+                List.of(AppointmentStatus.PENDING, AppointmentStatus.WAITING, AppointmentStatus.IN_PROGRESS)
+            );
+        dto.setInQueue(alreadyInQueue); // غادي نحسبوها بعداً
         return dto;
     }
 
@@ -84,7 +87,7 @@ public class ManageBarberService {
 
         // 2. Mapper mn FavoriteBarber Entity l BarberSearchDto
         return regulars.stream()
-                .map(fav -> convertToDto(fav.getBarber(), false))
+                .map(fav -> convertToDto(fav.getBarber(), false,clientId))
                 .collect(Collectors.toList());
     }
 
@@ -92,7 +95,7 @@ public class ManageBarberService {
     public List<BarberSearchDto> getMyFavoriteBarbers(Long clientId) {
         List<FollowedBarber> favorites = followedRepository.findByClientIdAndIsFavorite(clientId, true);
         return favorites.stream()
-                .map(fav -> convertToDto(fav.getBarber(), true))
+                .map(fav -> convertToDto(fav.getBarber(), true,clientId))
                 .collect(Collectors.toList());
     }
 
