@@ -66,7 +66,7 @@ public class AppointmentService {
         if (isClient) {
             boolean alreadyInQueue = appointmentRepository.existsByClientIdAndStatusIn(
                 currentUserId, 
-                List.of(AppointmentStatus.PENDING, AppointmentStatus.WAITING, AppointmentStatus.IN_PROGRESS)
+                List.of( AppointmentStatus.WAITING, AppointmentStatus.IN_PROGRESS)
             );
             if (alreadyInQueue) {
                 throw new RuntimeException("Rak dejà f n-nouba walla katti-tsenna acceptation!");
@@ -150,25 +150,43 @@ public class AppointmentService {
         app.setEndTime(startTime.plusMinutes(totalDuration));
     }
 
-    @Transactional
+@Transactional
     public AppointmentResponseDTO acceptAppointment(Long appointmentId) {
         AppointmentEntity app = appointmentRepository.findById(appointmentId)
                 .orElseThrow(() -> new RuntimeException("Demand ma-lqinahch"));
 
-        if (app.getStatus() != AppointmentStatus.PENDING) {
-            throw new RuntimeException("Had l-rdv machi pending!");
+        Long clientId = app.getClient().getId();
+
+        // 1. AUTO-CANCEL (hadchi kheddam mzyan)
+        List<AppointmentEntity> otherRequests = appointmentRepository
+                .findByClientIdAndStatus(clientId, AppointmentStatus.PENDING);
+        
+        for (AppointmentEntity other : otherRequests) {
+            if (!other.getId().equals(appointmentId)) {
+                other.setStatus(AppointmentStatus.CANCELLED);
+                messagingTemplate.convertAndSend("/topic/queue/" + other.getCoiffeur().getId(), "UPDATE_QUEUE");
+            }
         }
 
-        // Nadi l-helper method li gadina l-fouq bach t-7seb lih n-nouba
-        List<Long> serviceIds = app.getServices().stream().map(ServiceEntity::getId).toList();
+        // 2. 🔥 SETUP WAITING & TIME (Hna fine khass t-zid l-khidma)
+        app.setStatus(AppointmentStatus.WAITING);
+        
+        // Jib l-IDs dyal les services bach n-calculiw duration
+        List<Long> serviceIds = app.getServices().stream()
+                                   .map(ServiceEntity::getId)
+                                   .toList();
+                                   
+        // ✅ CALCULI L-WAQT DYAL N-NOUBA (Darouri!)
         setupQueueTimes(app, app.getCoiffeur().getId(), serviceIds);
 
-        app.setStatus(AppointmentStatus.WAITING);
+        // 3. Save everything
+        appointmentRepository.saveAll(otherRequests);
         AppointmentEntity saved = appointmentRepository.save(app);
 
-        // Notify kolchi
+        // 4. Notify l-Client u l-Coiffeur
+        messagingTemplate.convertAndSend("/topic/user/" + clientId, "QUEUE_UPDATED");
         messagingTemplate.convertAndSend("/topic/queue/" + app.getCoiffeur().getId(), "UPDATE_QUEUE");
-        
+
         return mapToResponseDTO(saved);
     }
     @Transactional
@@ -180,11 +198,18 @@ public class AppointmentService {
         appointmentRepository.save(app);
         
         messagingTemplate.convertAndSend("/topic/queue/" + app.getCoiffeur().getId(), "UPDATE_QUEUE");
+        // 🔥 Signal l-Client: Bach l-bouton trje3 "Send Demand" f-lblassa
+        if (app.getClient() != null) {
+            messagingTemplate.convertAndSend("/topic/user/" + app.getClient().getId(), "QUEUE_UPDATED");
+        }
     }
     private AppointmentResponseDTO mapToResponseDTO(AppointmentEntity entity) {
         AppointmentResponseDTO dto = new AppointmentResponseDTO();
         dto.setId(entity.getId());
         
+        if (entity.getCoiffeur() != null) {
+            dto.setBarberId(entity.getCoiffeur().getId());
+        }
         // Logic dyal s-smiya: User official wala Manual
         if (entity.getClient() != null) {
             dto.setClientId(entity.getClient().getId());
@@ -238,16 +263,25 @@ public class AppointmentService {
         appointmentRepository.saveAll(futureApps);
     }
     //button start mn yabda
-    @Transactional
+@Transactional
     public AppointmentResponseDTO startAppointment(Long appointmentId) {
         AppointmentEntity app = appointmentRepository.findById(appointmentId)
                 .orElseThrow(() -> new RuntimeException("Appointment malqinahch"));
                 
         app.setStatus(AppointmentStatus.IN_PROGRESS);
-        // T-qder hna t-dir update l startTime l l-waqt d dba nishan ila bghiti dqiqa
-        app.setStartTime(LocalDateTime.now()); 
         
-        return mapToResponseDTO(appointmentRepository.save(app));
+        // 🔥 Zid had l-log bach t-choufi f l-console wach l-waqt t-set-a s7i7
+        LocalDateTime now = LocalDateTime.now();
+        System.out.println("DEBUG: Setting StartTime to: " + now);
+        app.setStartTime(now); 
+
+        // 🔥 Ista3mly saveAndFlush bach t-sauvaw l-updates deghya
+        AppointmentEntity savedApp = appointmentRepository.saveAndFlush(app);
+        
+        // Notification real-time (Darouri bach l-client y-chouf l-bedil)
+        messagingTemplate.convertAndSend("/topic/queue/" + app.getCoiffeur().getId(), "UPDATE_QUEUE");
+        
+        return mapToResponseDTO(savedApp);
     }
 
     //button done ila sala
@@ -302,17 +336,18 @@ public class AppointmentService {
         return filteredApps.stream().map(this::mapToResponseDTO).toList();
     }
 
-    public AppointmentResponseDTO getMyActiveAppointment(Long clientId) {
-        // 1. Chnou houma l-statuses li kiy-3niw beli s-sayed rah "In Line"?
+    public List<AppointmentResponseDTO> getMyActiveAppointments(Long clientId) {
+        // 1. Statuses li bghina n-suiviw
         List<AppointmentStatus> activeStatuses = List.of(
-            AppointmentStatus.PENDING, 
             AppointmentStatus.WAITING, 
-            AppointmentStatus.IN_PROGRESS
+            AppointmentStatus.IN_PROGRESS,
+            AppointmentStatus.PENDING
         );
 
-        // 2. Jib l-rdv l-akhir (li fih weqt qrib) dyal had l-client
-        return appointmentRepository.findTopByClientIdAndStatusInOrderByStartTimeAsc(clientId, activeStatuses)
+        // 2. ⚡ Beddelna findTop b findBy bach n-jebdo koulchi
+        return appointmentRepository.findByClientIdAndStatusIn(clientId, activeStatuses)
+                .stream()
                 .map(this::mapToResponseDTO)
-                .orElse(null); // Ila malqach rdv, kiy-rejje3 null
+                .toList();
     }
 }

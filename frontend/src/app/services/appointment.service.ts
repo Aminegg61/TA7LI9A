@@ -37,7 +37,7 @@ export class AppointmentService {
   rejectAppointment(id: number): Observable<any> {
     return this.http.put(`${this.baseUrl}/${id}/reject`, {});
   }
-  getMyActiveAppointment(): Observable<AppointmentResponseDTO> {
-    return this.http.get<AppointmentResponseDTO>(`${this.baseUrl}/my-active`);
+  getMyActiveAppointment(): Observable<AppointmentResponseDTO[]> {
+    return this.http.get<AppointmentResponseDTO[]>(`${this.baseUrl}/my-active`);
   }
 }

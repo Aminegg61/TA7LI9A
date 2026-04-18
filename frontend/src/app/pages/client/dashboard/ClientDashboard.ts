@@ -129,24 +129,42 @@ import { AuthService } from '../../../services/auth';
               </div>
 
 
-<button *ngIf="barber.currentStatus === 'ACTIVE' && !userAppointment"
-        (click)="openServiceSelection(barber.id)"
-        class="w-full bg-yellow-500 text-black font-black uppercase tracking-widest py-4 rounded-xl hover:bg-yellow-400 transition-all active:scale-[0.98]">
-  Send a Demand
+           <button *ngIf="barber.currentStatus === 'ACTIVE' && !isAlreadyRequested(barber.id) && !isAcceptedAnywhere()"
+                (click)="openServiceSelection(barber.id)"
+                class="w-full bg-yellow-500 text-black font-black uppercase py-4 rounded-xl hover:bg-yellow-400 mb-2 transition-all">
+          Send a Demand
+        </button>
+
+        <div *ngIf="isAlreadyRequested(barber.id)" 
+            class="w-full bg-neutral-900 text-yellow-500/50 py-4 text-center rounded-xl border border-yellow-500/10 mb-2 uppercase font-black text-[10px] tracking-widest">
+          Pending Response... 
+<button (click)="closeModal()" 
+  class="flex-1 bg-transparent border border-neutral-700 text-neutral-400 
+         font-black uppercase tracking-widest py-3 rounded-xl 
+         hover:bg-neutral-800 hover:text-white hover:border-neutral-500
+         active:scale-95 transition-all duration-200">
+  Cancel
 </button>
+        </div>
 
-<div *ngIf="userAppointment"
-     class="w-full bg-neutral-950 text-neutral-500 text-center font-black uppercase tracking-widest py-4 rounded-xl border border-neutral-800 shadow-inner">
-  <span class="flex items-center justify-center gap-2">
-    <span class="w-2 h-2 bg-yellow-500 rounded-full animate-pulse"></span>
-    Already In Line
-  </span>
-</div>
 
-<div *ngIf="barber.currentStatus !== 'ACTIVE' && !userAppointment"
-     class="w-full bg-neutral-950 text-neutral-500 text-center font-black uppercase tracking-widest py-4 rounded-xl border border-neutral-800 shadow-inner">
-  Not Available currently
-</div>
+        <div *ngIf="getAcceptedApp()?.barberId === barber.id"
+            class="w-full bg-neutral-950 text-green-500 text-center py-4 rounded-xl border border-green-500/20 shadow-inner mb-2">
+          <span class="flex items-center justify-center gap-2 font-black uppercase text-[10px] tracking-widest">
+            <span class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+            You are in his Queue
+          </span>
+        </div>
+
+        <div *ngIf="isAcceptedAnywhere() && getAcceptedApp()?.barberId !== barber.id"
+            class="w-full bg-neutral-950 text-neutral-600 text-center py-4 rounded-xl border border-neutral-900 opacity-50 mb-2">
+          <span class="text-[10px] font-black uppercase italic tracking-tighter">Busy with another barber</span>
+        </div>
+
+        <div *ngIf="barber.currentStatus !== 'ACTIVE' && !isAlreadyRequested(barber.id) && !isAcceptedAnywhere()"
+            class="w-full bg-neutral-950 text-neutral-500 text-center font-black uppercase tracking-widest py-4 rounded-xl border border-neutral-800 shadow-inner">
+          Not Available currently
+        </div>
             </div>
 
             <!-- Accent line -->
@@ -241,7 +259,7 @@ export class ClientDashboard implements OnInit, OnDestroy {
   targetBarberId: number | null = null;
   barberServices: ServiceResponseDTO[] = [];
   selectedServices: number[] = [];
-  userAppointment: AppointmentResponseDTO | null = null;
+  userAppointments: AppointmentResponseDTO[] = [];
   // private subscriptions: Subscription[] = [];
   private barberSubs: Subscription[] = [];
   private userSubs: Subscription[] = [];
@@ -284,15 +302,28 @@ export class ClientDashboard implements OnInit, OnDestroy {
       this.userSubs.push(sub);
     }
   }
+  isAlreadyRequested(barberId: number): boolean {
+    // Checki wach kayn chi appointment f l-array 3ndu had l-barberId u status PENDING
+    return this.userAppointments.some(a => a.barberId === barberId && a.status === 'PENDING');
+  }
+  // 1. Had l-function katti-9elleb f l-lista wach chi wa7ed m-accepter
+  getAcceptedApp(): AppointmentResponseDTO | undefined {
+    return this.userAppointments.find(a => 
+      a.status === 'WAITING' || a.status === 'IN_PROGRESS'
+    );
+  }
 
+  // 2. Check wach m-accepter f chi blassa (bach n-bloquiweh f l-okhrin)
+  isAcceptedAnywhere(): boolean {
+    return !!this.getAcceptedApp();
+  }
   loadMyStatus() {
     this.appointmentService.getMyActiveAppointment().subscribe(res => {
-
-      // 👇 ما تبدل والو إلا modal محلول
       if (this.serviceSelectOpen) return;
-
-      this.userAppointment = res;
-
+      
+      // Daba res wellat Array []
+      this.userAppointments = res; 
+      
       this.cdr.detectChanges();
     });
   }
@@ -449,5 +480,20 @@ export class ClientDashboard implements OnInit, OnDestroy {
         this.loadLists();
       }
     });
+  }
+  cancelMyRequest(barberId: number) {
+    // 1. Jbed l-appointment PENDING li m3a had l-barber men l-lista dyalna
+    const app = this.userAppointments.find(a => a.barberId === barberId && a.status === 'PENDING');
+    
+    if (app) {
+      // 2. Nadi l-service (ista3mel l-methode li 3ndek dejà f l-service)
+      this.appointmentService.rejectAppointment(app.id).subscribe({
+        next: () => {
+          // Refresh bach t-t-7iyed l-box d Pending
+          this.loadMyStatus();
+        },
+        error: (err) => console.error("Error canceling", err)
+      });
+    }
   }
 }

@@ -9,7 +9,7 @@ import lombok.Setter;
 @Getter @Setter
 public class AppointmentResponseDTO {
     private Long id;
-    
+    private Long barberId;
     private Long clientId;
     private String clientName;      // Smiya d l-User wala l-Manual Name
     private List<String> serviceNames; // Smiyat d les services (bach n-affichiwhom)

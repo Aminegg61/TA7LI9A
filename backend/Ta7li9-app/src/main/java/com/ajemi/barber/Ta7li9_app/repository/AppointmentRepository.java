@@ -57,9 +57,10 @@ public interface AppointmentRepository extends JpaRepository<AppointmentEntity, 
         List<AppointmentStatus> statuses
     );
     // find all pending appointments for a specific client
-    //List<AppointmentEntity> findByClientIdAndStatus(Long clientId, AppointmentStatus status);
+    List<AppointmentEntity> findByClientIdAndStatus(Long clientId, AppointmentStatus status);
     // AppointmentRepository.java
     boolean existsByClientIdAndCoiffeurIdAndStatus(Long clientId, Long coiffeurId, AppointmentStatus status);
+    List<AppointmentEntity> findByClientIdAndStatusIn(Long clientId, List<AppointmentStatus> statuses);
     // List<AppointmentEntity> findByCoiffeurIdAndStatusInAndCreatedAtBeforeOrderByCreatedAtAsc(
     //     Long barberId, 
     //     List<AppointmentStatus> statuses, 

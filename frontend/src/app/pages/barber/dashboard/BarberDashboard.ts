@@ -372,13 +372,13 @@ export class BarberDashboard implements OnInit {
     this.appointmentService.getTodayQueue().subscribe({
       next: (res) => {
         // 1. Demandes li baqi ma-t-acceptawch
-        console.log(this.pendingRequests);
+        console.log("Data men l-Backend:", res);
         
         this.pendingRequests = res.filter(a => a.status === 'PENDING');
         // Filter l-appointments b7al dima
         this.activeQueue = res.filter(a => a.status === 'WAITING' || a.status === 'IN_PROGRESS');
         this.historyQueue = res.filter(a => a.status === 'COMPLETED');
-        
+        console.log("Active Queue Filtered:", this.activeQueue);
         // 🔥 Zid hadi hna darouri bach t-t-refresh l-UI
         this.cdr.detectChanges();
       },

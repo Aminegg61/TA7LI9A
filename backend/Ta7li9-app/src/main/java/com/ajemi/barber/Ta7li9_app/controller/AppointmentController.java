@@ -75,10 +75,10 @@ public class AppointmentController {
     }
 
     @GetMapping("/my-active")
-    public ResponseEntity<AppointmentResponseDTO> getMyActiveAppointment(
+    public ResponseEntity<List<AppointmentResponseDTO>> getMyActiveAppointment(
         @AuthenticationPrincipal UserPrincipal currentUser) {
         // currentUser.getId() ghadi y-3tina ID dyal l-klyan li m-connecti
-        AppointmentResponseDTO response = appointmentService.getMyActiveAppointment(currentUser.getId());
+        List<AppointmentResponseDTO> response = appointmentService.getMyActiveAppointments(currentUser.getId());
         return ResponseEntity.ok(response);
     }
 }
